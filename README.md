@@ -51,12 +51,12 @@ Development is currently under way on incorporating orientation updates.
 
 <br>
 <p align='center'>
-    <img src="./doc/NCD.PNG" alt="drawing" width="720"/>
+    <img src="./doc/NCD.PNG" alt="drawing" width="360"/>
 </p>
 <p align=center>Newer College Dataset Long Experiment 250 scan summary map showcases significant level of detail made available by OptMap.</p align=center>
 
 <br>
 <p align='center'>
-    <img src="./doc/forestloop.PNG" alt="drawing" width="720"/>
+    <img src="./doc/forestloop.PNG" alt="drawing" width="360"/>
 </p>
 <p align=center>500 scan summary map of large custom forest loop dataset which traversed 2.3 km.</p align=center>
