@@ -1,0 +1,37 @@
+<?xml version="1.0"?>
+
+<package format="2">
+
+  <name>optmap</name>
+  <version>1.0.0</version>
+  <description>OptMap: Real-time and flexible LiDAR submap generation using streaming submodular maximization.</description>
+
+  <maintainer email="davidthorne@ucla.edu">David Thorne</maintainer>
+  <maintainer email="nchen@ucla.edu">Nathan Chan</maintainer>
+  <maintainer email="btlopez@ucla.edu">Brett T. Lopez</maintainer>
+
+  <author>David Thorne</author>
+  <author>Nathan Chan</author>
+  <author>Brett T. Lopez</author>
+
+  <license>MIT</license>
+
+  <buildtool_depend>catkin</buildtool_depend>
+
+  <depend>message_generation</depend>
+  <depend>message_runtime</depend>
+
+  <depend>roscpp</depend>
+  <depend>std_msgs</depend>
+  <depend>sensor_msgs</depend>
+  <depend>geometry_msgs</depend>
+  <depend>nav_msgs</depend>
+  <depend>pcl_ros</depend>
+  <depend>rospy</depend>
+
+  <test_depend>rosunit</test_depend>
+
+  <export>
+  </export>
+
+</package>

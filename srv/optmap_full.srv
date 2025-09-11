@@ -1,0 +1,12 @@
+int32 num_keyframes
+string output_folder
+bool save_features
+bool use_initial_sol
+bool pub_pose
+bool save_pose
+bool pub_map
+bool save_map
+bool pub_scans
+bool save_scans
+---
+bool success

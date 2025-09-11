@@ -1,0 +1,54 @@
+<!--
+
+  Copyright (c) 2025
+
+  The Verifiable & Control-Theoretic Robotics (VECTR) Lab
+  University of California, Los Angeles
+
+  Authors: David Thorne, Nathan Chan, Brett T. Lopez
+  Contact: {davidthorne, nchan, btlopez}@ucla.edu
+
+-->
+
+<launch>
+
+  <arg name="optmap_namespace" default="optmap"/>
+
+  <arg name="pointcloud_topic" default="dliom/odom_node/pointcloud"/>
+  <arg name="pose_topic" default="dliom/odom_node/pose_optmap"/>
+  <arg name="pose_update_topic" default="/"/>
+
+  <!-- Point Cloud Descriptor Node -->
+  <node ns="$(arg optmap_namespace)" name="descriptor_node" pkg="optmap" type="pc_descriptor_node.py" output="screen" clear_params="true">
+
+    <!-- Load parameters -->
+    <rosparam file="$(find optmap)/cfg/nn.yaml" command="load"/>
+
+    <!-- Subscriptions -->
+    <remap from="~pointcloud"         to="$(arg pointcloud_topic)"/>
+
+    <!-- Publications -->
+    <remap from="~descriptor"         to="pc_descriptor_node/descriptor"/>
+
+  </node>
+
+  <!-- OptMap Node -->
+  <node ns="$(arg optmap_namespace)" name="optmap_node" pkg="optmap" type="optmap_node" output="screen" clear_params="true">
+
+    <!-- Load parameters -->
+    <rosparam file="$(find optmap)/cfg/optmap.yaml" command="load"/>
+
+    <!-- Subscriptions-->
+    <remap from="~descriptor"         to="pc_descriptor_node/descriptor"/>
+    <remap from="~pointcloud"         to="$(arg pointcloud_topic)"/>
+    <remap from="~pose"               to="$(arg pose_topic)"/>
+
+    <!-- Publications -->
+    <remap from="~map"                to="optmap/map"/>  
+    <remap from="~map_scans"          to="optmap/map_scans"/>
+    <remap from="~poses"              to="optmap/poses"/>
+    <remap from="~markers"            to="optmap/markers"/>
+
+  </node>
+
+</launch>

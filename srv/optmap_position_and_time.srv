@@ -1,0 +1,23 @@
+# Position constraints [x,y,z,r] and time constraints [t1 t2]
+# Time must be in unix time
+int32 num_keyframes
+float32[] x
+float32[] y
+float32[] z
+float32[] r
+time t1
+time t2
+string output_folder
+bool save_features
+bool use_initial_sol
+bool pub_pose
+bool save_pose
+bool pub_map
+bool save_map
+bool pub_scans
+bool save_scans
+---
+# Return includes the point cloud and poses
+bool success
+sensor_msgs/PointCloud2 submap
+geometry_msgs/PoseArray poses

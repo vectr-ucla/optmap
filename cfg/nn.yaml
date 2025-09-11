@@ -1,0 +1,8 @@
+nn:
+  fov_up: 22.5
+  fov_down: -22.5
+
+# Ouster OS0:       45° up, -45° down
+# Ouster OS1:       22.5° up, -22.5° down
+# Velodyne HDL-64E: 3° up, -25° down
+# Hesai QT64:       52° up, -52° down
