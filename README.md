@@ -5,7 +5,7 @@ Real-time geometric map distillation for fast and flexible LiDAR map distillatio
 <p align='center'>
     <img src="./doc/optmap_pipeline.PNG" alt="drawing" width="720"/>
 </p>
-*OptMap pipeline with three stages, descriptor set generation, dynamically reordered streaming submodular maximization, and map loading.*
+<p align=center>OptMap pipeline with three stages, descriptor set generation, dynamically reordered streaming submodular maximization, and map loading.</p align=center>
 
 ## Overview
 OptMap contains two nodes: the primary optmap node is a LiDAR mapping node which can be used to generate customized maps in real time, and the second generates point cloud descriptors which are used by the optmap node to select output maps. Both are launched from the same launch file `optmap.launch`.
@@ -47,16 +47,16 @@ Development is currently under way on incorporating orientation updates.
 <p align='center'>
     <img src="./doc/kitti.PNG" alt="drawing" width="720"/>
 </p>
-*Semantic KITII Sequence 02 summary maps with 100, 250, and 500 scans.*
+<p align=center>Semantic KITII Sequence 02 summary maps with 100, 250, and 500 scans.</p align=center>
 
 <br>
 <p align='center'>
     <img src="./doc/NCD.PNG" alt="drawing" width="720"/>
 </p>
-*Newer College Dataset Long Experiment 250 scan summary map showcases significant level of detail made available by OptMap.*
+<p align=center>Newer College Dataset Long Experiment 250 scan summary map showcases significant level of detail made available by OptMap.</p align=center>
 
 <br>
 <p align='center'>
     <img src="./doc/forestloop.PNG" alt="drawing" width="720"/>
 </p>
-*500 scan summary map of large custom forest loop dataset which traversed 2.3 km.*
+<p align=center>500 scan summary map of large custom forest loop dataset which traversed 2.3 km.</p align=center>
