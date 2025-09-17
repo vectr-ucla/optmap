@@ -1,11 +1,24 @@
 # OptMap
-Real-time geometric map distillation for fast and flexible LiDAR map distillation using streaming submodular maximization.
+Real-time geometric map distillation for fast and flexible LiDAR map generation using streaming submodular maximization.
 
 <br>
 <p align='center'>
     <img src="./doc/optmap_pipeline.PNG" alt="drawing" width="720"/>
 </p>
 <p align=center>OptMap pipeline with three stages, descriptor set generation, dynamically reordered streaming submodular maximization, and map loading.</p align=center>
+
+## Dependencies
+- Ubuntu 20.04
+- ROS Noetic (`roscpp`, `std_msgs`, `sensor_msgs`, `geometry_msgs`, `nav_msgs`, `pcl_ros`)
+- C++ 17
+- CMake >= `3.12.4`
+- OpenMP >= `4.5`
+- Point Cloud Library >= `1.10.0`
+- Eigen >= `3.3.7`
+
+```
+sudo apt install libomp-dev libpcl-dev libeigen3-dev
+```
 
 ## Overview
 OptMap contains two nodes: the primary optmap node is a LiDAR mapping node which can be used to generate customized maps in real time, and the second generates point cloud descriptors which are used by the optmap node to select output maps. Both are launched from the same launch file `optmap.launch`.
