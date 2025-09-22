@@ -47,9 +47,9 @@ roslaunch optmap optmap.launch
 Below are examples of how to call various optmap services using rosservice CLI:
 ```
 rosservice call /optmap/optmap_node/optmap_set_voxelization 0.5
-rosservice call /optmap/optmap_node/optmap_full "{num_keyframes: 5, output_folder: '/home/vectr', save_map: true, save_poses: true}"
-rosservice call /optmap/optmap_node/optmap_position "{num_keyframes: 5, x: [0], y: [0], z: [0], r: [10], output_folder: '/home/vectr', save_map: true}"
-rosservice call /optmap/optmap_node/optmap_position_and_time "{num_keyframes: 5, x: [0, -4, -12.2], y: [0, 2.5, 15], z: [0, 0, 0], r: [10, 2, 15], t1: [1749054988], t2: [1749055020], output_folder: '/home/vectr', save_map: true}"
+rosservice call /optmap/optmap_node/optmap_full "{num_scans: 5, output_folder: '/home/vectr', save_map: true, save_poses: true}"
+rosservice call /optmap/optmap_node/optmap_position "{num_scans: 5, x: [0], y: [0], z: [0], r: [10], output_folder: '/home/vectr', save_map: true}"
+rosservice call /optmap/optmap_node/optmap_position_and_time "{num_scans: 5, x: [0, -4, -12.2], y: [0, 2.5, 15], z: [0, 0, 0], r: [10, 2, 15], t1: [1749054988], t2: [1749055020], output_folder: '/home/vectr', save_map: true}"
 ```
 Note that time constraints are in Unix time, and optmap saves scan timestamps according to the pointcloud timestamp by default.
 
