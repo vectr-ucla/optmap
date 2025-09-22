@@ -21,11 +21,11 @@ class OptMapNode {
         int get_num_features() { return this->featureList.get_num_features(); }
         int get_num_features_all_features() { return this->featureList.get_num_features_all_features(); }
 
-        // Finds the best `num_keyframes` features to build a submap of the area.
+        // Finds the best `num_scans` features to build a submap of the area.
         // Optionally, the area can be specified by `x`, `y`, `z`, `r`, `t1`, and `t2`
-        // where all keyframes must be within a radius `r` of `x`, `y`, `z` and have a time `t` such that `t1` <= `t` <= `t2`.
+        // where all scans must be within a radius `r` of `x`, `y`, `z` and have a time `t` such that `t1` <= `t` <= `t2`.
         // Returns a vector of feature indices, which can be used in downstream functions. Also sets `result_map`.
-        void optimize_streaming(int num_keyframes, std::vector<float>* x=NULL, std::vector<float>* y=NULL, std::vector<float>* z=NULL, std::vector<float>* r=NULL,
+        void optimize_streaming(int num_scans, std::vector<float>* x=NULL, std::vector<float>* y=NULL, std::vector<float>* z=NULL, std::vector<float>* r=NULL,
                                 ros::Time t1=ros::Time::MIN, ros::Time t2=ros::Time::MAX);
 
         // config
@@ -87,8 +87,8 @@ class OptMapNode {
             return exemplar_score / sample_traj_dist;
         }
         
-        void optimize_streaming_helper(std::vector<std::pair<int,float>> features, int num_keyframes);
-        std::vector<int> gen_heur_sol(const std::vector<int>& feature_indices, int num_keyframes);
+        void optimize_streaming_helper(std::vector<std::pair<int,float>> features, int num_scans);
+        std::vector<int> gen_heur_sol(const std::vector<int>& feature_indices, int num_scans);
         float overlap_from_desc(float dist);
         float overlap_from_pose(const Feature::Pose& pose1, const Feature::Pose& pose2);
 
