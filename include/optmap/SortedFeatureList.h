@@ -112,6 +112,6 @@ class SortedFeatureList {
         std::condition_variable descriptor_distances_queue_cv;
         bool descriptor_distances_thread_active;
 
-        // config parameter. physical distance requirement between consecutive features
+        // config parameter. Distance requirement between consecutive features
         float unique_scan_dist;
 };
