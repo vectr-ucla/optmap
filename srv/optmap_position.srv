@@ -1,4 +1,4 @@
-int32 num_keyframes
+int32 num_scans
 float32[] x
 float32[] y
 float32[] z

@@ -54,7 +54,7 @@ OptMapNode::OptMapNode(ros::NodeHandle node_handle) : nh(node_handle) {
 
     ros::Time current_time = ros::Time::now();
     this->pc_foldername = "./temp-" + std::to_string(current_time.sec) + "-" + std::to_string(current_time.nsec);
-    boost::filesystem::create_directory(this->pc_foldername);
+    std::filesystem::create_directory(this->pc_foldername);
 }
 
 OptMapNode::~OptMapNode() {
@@ -232,7 +232,7 @@ void OptMapNode::callbackPoseUpdates(optmap::OptmapPoseArrayPtr msg) {
     this->last_updated_pose_index = featureList.get_num_features_all_features() - 1;
 }
 
-void OptMapNode::optimize_streaming(int num_keyframes, std::vector<float>* x, std::vector<float>* y, std::vector<float>* z, std::vector<float>* r, ros::Time t1, ros::Time t2) {
+void OptMapNode::optimize_streaming(int num_scans, std::vector<float>* x, std::vector<float>* y, std::vector<float>* z, std::vector<float>* r, ros::Time t1, ros::Time t2) {
     
     // check if distances done caluclating
     int queue_size = featureList.get_distances_queue_size();
@@ -285,7 +285,7 @@ void OptMapNode::optimize_streaming(int num_keyframes, std::vector<float>* x, st
         return;
     }
 
-    optimize_streaming_helper(features, num_keyframes);
+    optimize_streaming_helper(features, num_scans);
     auto wait_start_time = std::chrono::steady_clock::now();
 
     // Wait for map build
@@ -315,7 +315,7 @@ void OptMapNode::optimize_streaming(int num_keyframes, std::vector<float>* x, st
         cloud_ros.header.frame_id = this->map_frame;
         this->map_pub.publish(cloud_ros);
         
-        ROS_INFO("Published summary map.");
+        ROS_INFO("Published map.");
     }
 
     if (this->save_map) {
@@ -344,20 +344,20 @@ void OptMapNode::optimize_streaming(int num_keyframes, std::vector<float>* x, st
     std::cout << std::endl;
 }
 
-void OptMapNode::optimize_streaming_helper(std::vector<std::pair<int,float>> features, int num_keyframes) {
+void OptMapNode::optimize_streaming_helper(std::vector<std::pair<int,float>> features, int num_scans) {
     #pragma omp declare reduction(min_score_and_index : OptMapNode::ScoreIndexPair : \
         omp_out = (omp_out.score < omp_in.score) ? omp_out : omp_in) \
         initializer(omp_priv = {std::numeric_limits<float>::infinity(), -1})
 
     auto start_time = std::chrono::steady_clock::now();
 
-    if (features.size() < num_keyframes) {
-        num_keyframes = features.size();
+    if (features.size() < num_scans) {
+        num_scans = features.size();
         ROS_WARN("Requested optmap output with more scans than are currently available");
     }
 
     // algorithm parameters
-    float beta = 0.5f;      // required percentage of OPT to add it as a keyframe
+    float beta = 0.5f;      // required percentage of OPT to add it as a scan
     float epsilon = 0.01f;  // used to decide how many values of OPT are tested
     float max_score = 1.f;  // L(e0), value of exemplar-based clustering loss function for auxilary element. Should be the maximum possible loss.
     float max_dist = 1.f;   // d(e0, v) for any v in S. Also the maximum distance, since this will maximize the loss.
@@ -381,7 +381,7 @@ void OptMapNode::optimize_streaming_helper(std::vector<std::pair<int,float>> fea
 
     // Initial solution evenly spaces scans based on total trajectory distance (between descriptors)
     auto start_time_init_sol = std::chrono::steady_clock::now();
-    std::vector<int> heur_sol = gen_heur_sol(feature_indices_, num_keyframes);
+    std::vector<int> heur_sol = gen_heur_sol(feature_indices_, num_scans);
     auto end_time_init_sol = std::chrono::steady_clock::now();
     if (debug) {
         this->init_sol_time = std::chrono::duration<double, std::milli>(end_time_init_sol - start_time_init_sol).count();
@@ -409,7 +409,7 @@ void OptMapNode::optimize_streaming_helper(std::vector<std::pair<int,float>> fea
 
     if (debug) {
         this->beta_output = beta;
-        this->num_scans_output = num_keyframes;
+        this->num_scans_output = num_scans;
         this->lower_bound = opt_lower_bound;
         this->upper_bound = opt_upper_bound;
     }
@@ -433,7 +433,7 @@ void OptMapNode::optimize_streaming_helper(std::vector<std::pair<int,float>> fea
             sorted_partition_size = features.size();
         }
         else {
-            sorted_partition_size = std::min(static_cast<int>(sorted_set_factor * num_keyframes), static_cast<int>(features.size()));
+            sorted_partition_size = std::min(static_cast<int>(sorted_set_factor * num_scans), static_cast<int>(features.size()));
         }
     }
     else {
@@ -481,7 +481,7 @@ void OptMapNode::optimize_streaming_helper(std::vector<std::pair<int,float>> fea
     }
 
     // after how many iterations of having the same solution is the worker thread notified
-    int unchanged_iters_thresh = std::min(unchanged_iters_max, (int) std::ceil(feature_indices_shuffled.size() / num_keyframes));
+    int unchanged_iters_thresh = std::min(unchanged_iters_max, (int) std::ceil(feature_indices_shuffled.size() / num_scans));
 
     int num_full_solutions = 0;
     int best_index = -1;
@@ -528,15 +528,15 @@ void OptMapNode::optimize_streaming_helper(std::vector<std::pair<int,float>> fea
         for (int j = 0; j < O.size(); j++) {
 
             // skip if cardinality constraint or OPT reached
-            if (curr_feature_indices[j].size() >= num_keyframes) {
+            if (curr_feature_indices[j].size() >= num_scans) {
                 continue;
             }
 
-            // test adding the current scan as a keyframe
+            // test adding the current scan as a scan
             float exemp_score = oracle_exemplar(index, feature_indices_shuffled, num_eval_scans, prev_min_dists[j], prev_scores[j], sample_traj_dist);
             float marginal_gain = prev_scores[j] - exemp_score;  // (max_score - exemp_score) - (max_score - prev_scores[j])
 
-            float threshold = (O[j]*beta - (max_score - prev_scores[j])) / (num_keyframes - curr_feature_indices[j].size());
+            float threshold = (O[j]*beta - (max_score - prev_scores[j])) / (num_scans - curr_feature_indices[j].size());
             
             if (marginal_gain >= threshold) {
                 // Loop over all elements now to update expected values
@@ -583,7 +583,7 @@ void OptMapNode::optimize_streaming_helper(std::vector<std::pair<int,float>> fea
                 prev_scores[j] = exemp_score;
                 curr_feature_indices[j].push_back(index);
 
-                if (curr_feature_indices[j].size() >= num_keyframes) {
+                if (curr_feature_indices[j].size() >= num_scans) {
                     #pragma omp atomic
                     num_full_solutions++;
                 }
@@ -744,7 +744,7 @@ void OptMapNode::build_map_worker() {
 
 pcl::PointCloud<pcl::PointXYZ>::Ptr OptMapNode::build_pointcloud_map(const std::vector<int>& feature_indices) {
 
-    pcl::PointCloud<pcl::PointXYZ>::Ptr map (boost::make_shared<pcl::PointCloud<pcl::PointXYZ>>());
+    pcl::PointCloud<pcl::PointXYZ>::Ptr map (std::make_shared<pcl::PointCloud<pcl::PointXYZ>>());
 
     std::optional<Feature::Pose> del_pose;
     for (int index : feature_indices) {
@@ -796,7 +796,7 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr OptMapNode::build_pointcloud_map(const std::
 }
 
 geometry_msgs::PoseArray::Ptr OptMapNode::build_pose_array(const std::vector<int>& feature_indices) {
-    geometry_msgs::PoseArray::Ptr pa (boost::make_shared<geometry_msgs::PoseArray>());
+    geometry_msgs::PoseArray::Ptr pa (std::make_shared<geometry_msgs::PoseArray>());
     pa->header.frame_id = this->map_frame;
     
     visualization_msgs::MarkerArray mArray;
