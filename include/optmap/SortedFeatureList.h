@@ -32,7 +32,6 @@ class SortedFeatureList {
         }
 
         // calling this function requires acquiring the lock on `distances_mutex`
-        // descriptor_distances matrix already has feature weighting factored in
         inline float get_distance_between_descriptors(int feature_index1, int feature_index2) const {
             assert(feature_index1 < get_num_features() && feature_index2 < get_num_features());
             return descriptor_distances[feature_index1][feature_index2];
