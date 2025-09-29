@@ -1,5 +1,8 @@
 #include "optmap/optmap.h"
 
+using std::placeholders::_1;
+using std::placeholders::_2;
+
 std::string get_save_folder(std::string save_folder) {
     int next = 2;
     std::string new_save_folder = save_folder + "/optmap";
@@ -12,132 +15,148 @@ std::string get_save_folder(std::string save_folder) {
     return new_save_folder;
 }
 
-bool service_full(OptMapNode* node, optmap::optmap_full::Request& req, optmap::optmap_full::Response& res) {
+void service_full(OptMapNode* node, const std::shared_ptr<custom_interfaces::srv::OptmapFull::Request> req, std::shared_ptr<custom_interfaces::srv::OptmapFull::Response> res) {
     std::cout << "\n";
-    ROS_INFO("Starting map optimization. \nTotal number of available features: %d \nParameters:\n - num_scans=%d\n - save_folder=%s\n - save_features=%d\n - use_initial_sol=%d\n - publish_poses=%d\n - save_poses=%d\n - publish_map=%d\n - save_map=%d\n - publish_scans=%d\n - save_scans=%d\n\n",
-            node->get_num_features(), req.num_scans, req.output_folder.c_str(), req.save_features, req.use_initial_sol, req.pub_pose, req.save_pose, req.pub_map, req.save_map, req.pub_scans, req.save_scans);
+    RCLCPP_INFO(rclcpp::get_logger("rclcpp"),"Starting map optimization. \nTotal number of available features: %d \nParameters:\n - num_scans=%d\n - save_folder=%s\n - save_features=%d\n - use_initial_sol=%d\n - publish_poses=%d\n - save_poses=%d\n - publish_map=%d\n - save_map=%d\n - publish_scans=%d\n - save_scans=%d\n\n",
+            node->get_num_features(), req->num_scans, req->output_folder.c_str(), req->save_features, req->pub_pose, req->save_pose, req->pub_map, req->save_map, req->pub_scans, req->save_scans);
     auto total_start_time = std::chrono::steady_clock::now();
     
-    if (req.save_features || req.save_map || req.save_pose || req.save_scans) {
-        std::string save_folder = get_save_folder(req.output_folder);
+    if (req->save_features || req->save_map || req->save_pose || req->save_scans) {
+        std::string save_folder = get_save_folder(req->output_folder);
         node->set_save_folder(save_folder);
     }
 
-    node->set_save_features(req.save_features);
-    node->set_publish_poses(req.pub_pose);
-    node->set_save_poses(req.save_pose);
-    node->set_publish_map(req.pub_map);
-    node->set_save_map(req.save_map);
-    node->set_publish_scans(req.pub_scans);
-    node->set_save_scans(req.save_scans);
+    node->set_save_features(req->save_features);
+    node->set_publish_poses(req->pub_pose);
+    node->set_save_poses(req->save_pose);
+    node->set_publish_map(req->pub_map);
+    node->set_save_map(req->save_map);
+    node->set_publish_scans(req->pub_scans);
+    node->set_save_scans(req->save_scans);
 
-    node->optimize_streaming(req.num_scans);
+    node->optimize_streaming(req->num_scans);
 
     auto total_end_time = std::chrono::steady_clock::now();
     std::cout << "OptMap Total Time: " << std::chrono::duration<double, std::milli>(total_end_time - total_start_time).count() << " ms" << std::endl;
 
-    res.success = true;
-    return res.success;
-}
-
-bool service_position(OptMapNode* node, optmap::optmap_position::Request& req, optmap::optmap_position::Response& res) {
-    std::cout << "\n";
-    ROS_INFO("Starting map optimization. \nTotal number of available features: %d \nParameters:\n - num_scans=%d\n - save_folder=%s\n - save_features=%d\n - use_initial_sol=%d\n - publish_poses=%d\n - save_poses=%d\n - publish_map=%d\n - save_map=%d\n - publish_scans=%d\n - save_scans=%d\n\n",
-            node->get_num_features(), req.num_scans, req.output_folder.c_str(), req.save_features, req.use_initial_sol, req.pub_pose, req.save_pose, req.pub_map, req.save_map, req.pub_scans, req.save_scans);
-    auto total_start_time = std::chrono::steady_clock::now();
-    
-    std::vector<float> x;
-    x.insert(x.end(), req.x.begin(), req.x.end());
-    std::vector<float> y;
-    y.insert(y.end(), req.y.begin(), req.y.end());
-    std::vector<float> z;
-    z.insert(z.end(), req.z.begin(), req.z.end());
-    std::vector<float> r;
-    r.insert(r.end(), req.r.begin(), req.r.end());
-
-    if (req.save_features || req.save_map || req.save_pose || req.save_scans) {
-        std::string save_folder = get_save_folder(req.output_folder);
-        node->set_save_folder(save_folder);
+    res->success = true;
+    if (res->success) {
+        RCLCPP_INFO(rclcpp::get_logger("rclcpp"), "true.");
     }
-
-    node->set_save_features(req.save_features);
-    node->set_publish_poses(req.pub_pose);
-    node->set_save_poses(req.save_pose);
-    node->set_publish_map(req.pub_map);
-    node->set_save_map(req.save_map);
-    node->set_publish_scans(req.pub_scans);
-    node->set_save_scans(req.save_scans);
-
-    node->optimize_streaming(req.num_scans, &x, &y, &z, &r);
-
-    auto total_end_time = std::chrono::steady_clock::now();
-    std::cout << "OptMap Total Time: " << std::chrono::duration<double, std::milli>(total_end_time - total_start_time).count() << " ms" << std::endl;
-
-    res.success = true;
-    return res.success;
+    else {
+        RCLCPP_ERROR(rclcpp::get_logger("rclcpp"), "OptMap Service Full Failed!");
+    }
 }
 
-bool service_position_and_time(OptMapNode* node, optmap::optmap_position_and_time::Request& req, optmap::optmap_position_and_time::Response& res) {
+void service_position(OptMapNode* node, const std::shared_ptr<custom_interfaces::srv::OptmapPosition::Request> req, std::shared_ptr<custom_interfaces::srv::OptmapPosition::Response> res) {
     std::cout << "\n";
-    ROS_INFO("Starting map optimization. \nTotal number of available features: %d \nParameters:\n - num_scans=%d\n - save_folder=%s\n - save_features=%d\n - use_initial_sol=%d\n - publish_poses=%d\n - save_poses=%d\n - publish_map=%d\n - save_map=%d\n - publish_scans=%d\n - save_scans=%d\n\n",
-            node->get_num_features(), req.num_scans, req.output_folder.c_str(), req.save_features, req.use_initial_sol, req.pub_pose, req.save_pose, req.pub_map, req.save_map, req.pub_scans, req.save_scans);
+    RCLCPP_INFO(rclcpp::get_logger("rclcpp"),"Starting map optimization. \nTotal number of available features: %d \nParameters:\n - num_scans=%d\n - save_folder=%s\n - save_features=%d\n - use_initial_sol=%d\n - publish_poses=%d\n - save_poses=%d\n - publish_map=%d\n - save_map=%d\n - publish_scans=%d\n - save_scans=%d\n\n",
+            node->get_num_features(), req->num_scans, req->output_folder.c_str(), req->save_features, req->pub_pose, req->save_pose, req->pub_map, req->save_map, req->pub_scans, req->save_scans);
     auto total_start_time = std::chrono::steady_clock::now();
     
     std::vector<float> x;
-    x.insert(x.end(), req.x.begin(), req.x.end());
+    x.insert(x.end(), req->x.begin(), req->x.end());
     std::vector<float> y;
-    y.insert(y.end(), req.y.begin(), req.y.end());
+    y.insert(y.end(), req->y.begin(), req->y.end());
     std::vector<float> z;
-    z.insert(z.end(), req.z.begin(), req.z.end());
+    z.insert(z.end(), req->z.begin(), req->z.end());
     std::vector<float> r;
-    r.insert(r.end(), req.r.begin(), req.r.end());
+    r.insert(r.end(), req->r.begin(), req->r.end());
 
-    if (req.save_features || req.save_map || req.save_pose || req.save_scans) {
-        std::string save_folder = get_save_folder(req.output_folder);
+    if (req->save_features || req->save_map || req->save_pose || req->save_scans) {
+        std::string save_folder = get_save_folder(req->output_folder);
         node->set_save_folder(save_folder);
     }
 
-    node->set_save_features(req.save_features);
-    node->set_publish_poses(req.pub_pose);
-    node->set_save_poses(req.save_pose);
-    node->set_publish_map(req.pub_map);
-    node->set_save_map(req.save_map);
-    node->set_publish_scans(req.pub_scans);
-    node->set_save_scans(req.save_scans);
+    node->set_save_features(req->save_features);
+    node->set_publish_poses(req->pub_pose);
+    node->set_save_poses(req->save_pose);
+    node->set_publish_map(req->pub_map);
+    node->set_save_map(req->save_map);
+    node->set_publish_scans(req->pub_scans);
+    node->set_save_scans(req->save_scans);
 
-    node->optimize_streaming(req.num_scans, &x, &y, &z, &r, req.t1, req.t2);
+    node->optimize_streaming(req->num_scans, &x, &y, &z, &r);
 
     auto total_end_time = std::chrono::steady_clock::now();
     std::cout << "OptMap Total Time: " << std::chrono::duration<double, std::milli>(total_end_time - total_start_time).count() << " ms" << std::endl;
 
-    res.success = true;
-    return res.success;
+    res->success = true;
+    if (res->success) {
+        RCLCPP_INFO(rclcpp::get_logger("rclcpp"), "true.");
+    }
+    else {
+        RCLCPP_ERROR(rclcpp::get_logger("rclcpp"), "OptMap Service Position Failed!");
+    }
 }
 
-bool service_set_voxelization(OptMapNode* node, optmap::optmap_set_voxelization::Request& req, optmap::optmap_set_voxelization::Response& res) {
-    ROS_INFO("Setting voxelization to %f\n", req.voxelization);
-
-    node->set_voxelization(req.voxelization);
+void service_position_and_time(OptMapNode* node, const std::shared_ptr<custom_interfaces::srv::OptmapPositionAndTime::Request> req, std::shared_ptr<custom_interfaces::srv::OptmapPositionAndTime::Response> res) {
+    std::cout << "\n";
+    RCLCPP_INFO(rclcpp::get_logger("rclcpp"),"Starting map optimization. \nTotal number of available features: %d \nParameters:\n - num_scans=%d\n - save_folder=%s\n - save_features=%d\n - use_initial_sol=%d\n - publish_poses=%d\n - save_poses=%d\n - publish_map=%d\n - save_map=%d\n - publish_scans=%d\n - save_scans=%d\n\n",
+            node->get_num_features(), req->num_scans, req->output_folder.c_str(), req->save_features, req->pub_pose, req->save_pose, req->pub_map, req->save_map, req->pub_scans, req->save_scans);
+    auto total_start_time = std::chrono::steady_clock::now();
     
-    res.success = true;
-    return res.success;
+    std::vector<float> x;
+    x.insert(x.end(), req->x.begin(), req->x.end());
+    std::vector<float> y;
+    y.insert(y.end(), req->y.begin(), req->y.end());
+    std::vector<float> z;
+    z.insert(z.end(), req->z.begin(), req->z.end());
+    std::vector<float> r;
+    r.insert(r.end(), req->r.begin(), req->r.end());
+
+    if (req->save_features || req->save_map || req->save_pose || req->save_scans) {
+        std::string save_folder = get_save_folder(req->output_folder);
+        node->set_save_folder(save_folder);
+    }
+
+    node->set_save_features(req->save_features);
+    node->set_publish_poses(req->pub_pose);
+    node->set_save_poses(req->save_pose);
+    node->set_publish_map(req->pub_map);
+    node->set_save_map(req->save_map);
+    node->set_publish_scans(req->pub_scans);
+    node->set_save_scans(req->save_scans);
+
+    node->optimize_streaming(req->num_scans, &x, &y, &z, &r, req->t1, req->t2);
+
+    auto total_end_time = std::chrono::steady_clock::now();
+    std::cout << "OptMap Total Time: " << std::chrono::duration<double, std::milli>(total_end_time - total_start_time).count() << " ms" << std::endl;
+
+    res->success = true;
+    if (res->success) {
+        RCLCPP_INFO(rclcpp::get_logger("rclcpp"), "true.");
+    }
+    else {
+        RCLCPP_ERROR(rclcpp::get_logger("rclcpp"), "OptMap Service Position and Time Failed!");
+    }
+}
+
+void service_set_voxelization(OptMapNode* node, const std::shared_ptr<custom_interfaces::srv::OptmapSetVoxelization::Request> req, std::shared_ptr<custom_interfaces::srv::OptmapSetVoxelization::Response> res) {
+    RCLCPP_INFO(rclcpp::get_logger("rclcpp"),"Setting voxelization to %f\n", req->voxelization);
+
+    node->set_voxelization(req->voxelization);
+    
+    res->success = true;
 }
 
 int main(int argc, char** argv) {
+    rclcpp::init(argc, argv);
 
-    ros::init(argc, argv, "optmap_node");
-    ros::NodeHandle nh("~");
+    auto node = std::make_shared<OptMapNode>();
 
-    OptMapNode node(nh);
-    ros::ServiceServer serviceF = nh.advertiseService<optmap::optmap_full::Request,
-                                                     optmap::optmap_full::Response>("optmap_full", boost::bind(service_full, &node, _1, _2));
-    ros::ServiceServer serviceP = nh.advertiseService<optmap::optmap_position::Request,
-                                                     optmap::optmap_position::Response>("optmap_position", boost::bind(service_position, &node, _1, _2));
-    ros::ServiceServer servicePT = nh.advertiseService<optmap::optmap_position_and_time::Request,
-                                                     optmap::optmap_position_and_time::Response>("optmap_position_and_time", boost::bind(service_position_and_time, &node, _1, _2));
-    ros::ServiceServer serviceVoxel = nh.advertiseService<optmap::optmap_set_voxelization::Request,
-                                                     optmap::optmap_set_voxelization::Response>("optmap_set_voxelization", boost::bind(service_set_voxelization, &node, _1, _2));
+    rclcpp::Service<custom_interfaces::srv::OptmapFull>::SharedPtr serviceF = 
+        node->create_service<custom_interfaces::srv::OptmapFull>("optmap_full", std::bind(service_full, node.get(), _1, _2));
+    rclcpp::Service<custom_interfaces::srv::OptmapPosition>::SharedPtr serviceP = 
+        node->create_service<custom_interfaces::srv::OptmapPosition>("optmap_position", std::bind(service_position, node.get(), _1, _2));
+    rclcpp::Service<custom_interfaces::srv::OptmapPositionAndTime>::SharedPtr servicePT = 
+        node->create_service<custom_interfaces::srv::OptmapPositionAndTime>("optmap_position_and_time", std::bind(service_position_and_time, node.get(), _1, _2));
+    rclcpp::Service<custom_interfaces::srv::OptmapSetVoxelization>::SharedPtr serviceVoxel = 
+        node->create_service<custom_interfaces::srv::OptmapSetVoxelization>("optmap_set_voxelization", std::bind(service_set_voxelization, node.get(), _1, _2));
+    
+    rclcpp::executors::MultiThreadedExecutor executor;
+    executor.add_node(node);
+    executor.spin();
 
-    ros::spin();
-    return 0;
+    rclcpp::shutdown();
 }

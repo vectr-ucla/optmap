@@ -1,32 +1,92 @@
 #include "optmap/optmap.h"
 
-OptMapNode::OptMapNode(ros::NodeHandle node_handle) : nh(node_handle) {
+#include "rclcpp/qos.hpp"
+
+OptMapNode::OptMapNode() : rclcpp::Node("optmap_node") {
     this->num_threads = omp_get_max_threads();
-    ros::param::param<std::string>("~optmap/version", this->version, "1.0.0");
-    ros::param::param<bool>("~optmap/debug", this->debug, false);
-    ros::param::param<float>("~optmap/fraction_eval_scans", this->fraction_eval_scans, 0.1);
-    ros::param::param<float>("~optmap/voxelize", this->voxelize, 0.5);
-    ros::param::param<int>("~optmap/unchanged_iters_max", this->unchanged_iters_max, 100);
-    ros::param::param<bool>("~optmap/dynamic_reordering", this->d_r, true);
-    ros::param::param<float>("~optmap/sorted_set_factor", this->sorted_set_factor, 1.5);
-    ros::param::param<float>("~optmap/dist_heur_radius", this->dist_heur_radius, 1.0);
-    ros::param::param<std::string>("~optmap/frames/map", this->map_frame, "map");
-    ros::param::param<float>("~optmap/box_min_x", this->x_min, -std::numeric_limits<float>::infinity());
-    ros::param::param<float>("~optmap/box_max_x", this->x_max, std::numeric_limits<float>::infinity());
-    ros::param::param<float>("~optmap/box_min_y", this->y_min, -std::numeric_limits<float>::infinity());
-    ros::param::param<float>("~optmap/box_max_y", this->y_max, std::numeric_limits<float>::infinity());
-    ros::param::param<float>("~optmap/box_min_z", this->z_min, -std::numeric_limits<float>::infinity());
-    ros::param::param<float>("~optmap/box_max_z", this->z_max, std::numeric_limits<float>::infinity());
 
-    this->pose_sub = this->nh.subscribe("pose", 1000, &OptMapNode::callbackPose, this, ros::TransportHints().tcpNoDelay());
-    this->descriptor_sub = this->nh.subscribe("descriptor", 1000, &OptMapNode::callbackDescriptor, this, ros::TransportHints().tcpNoDelay());
-    this->pc_sub = this->nh.subscribe("pointcloud", 20, &OptMapNode::callbackPointCloud, this, ros::TransportHints().tcpNoDelay());
-    this->pose_updates_sub = this->nh.subscribe("pose_updates", 1000, &OptMapNode::callbackPoseUpdates, this, ros::TransportHints().tcpNoDelay());
+    this->declare_parameter("version", "1.0.0");
+    this->get_parameter("version", this->version);
+    this->declare_parameter("voxelize", 0.5);
+    this->get_parameter("voxelize", this->voxelize);
+    this->declare_parameter("frames.map", "map");
+    this->get_parameter("frames.map", this->map_frame);
+    this->declare_parameter("fraction_eval_scans", 0.1);
+    this->get_parameter("fraction_eval_scans", this->fraction_eval_scans);
+    this->declare_parameter("unchanged_iters_max", 100);
+    this->get_parameter("unchanged_iters_max", this->unchanged_iters_max);
+    this->declare_parameter("dynamic_reordering", true);
+    this->get_parameter("dynamic_reordering", this->d_r);
+    this->declare_parameter("sorted_set_factor", 1.5);
+    this->get_parameter("sorted_set_factor", this->sorted_set_factor);
+    this->declare_parameter("dist_heur_radius", 1.0);
+    this->get_parameter("dist_heur_radius", this->dist_heur_radius);
+    this->declare_parameter("debug", false);
+    this->get_parameter("debug", this->debug);
+    this->declare_parameter("box_min_x", -std::numeric_limits<float>::infinity());
+    this->get_parameter("box_min_x", this->x_min);
+    this->declare_parameter("box_max_x", std::numeric_limits<float>::infinity());
+    this->get_parameter("box_max_x", this->x_max);
+    this->declare_parameter("box_min_y", -std::numeric_limits<float>::infinity());
+    this->get_parameter("box_min_y", this->y_min);
+    this->declare_parameter("box_max_y", std::numeric_limits<float>::infinity());
+    this->get_parameter("box_max_y", this->y_max);
+    this->declare_parameter("box_min_z", -std::numeric_limits<float>::infinity());
+    this->get_parameter("box_min_z", this->z_min);
+    this->declare_parameter("box_max_z", std::numeric_limits<float>::infinity());
+    this->get_parameter("box_max_z", this->z_max);
 
-    this->map_pub = this->nh.advertise<sensor_msgs::PointCloud2>("map", 1, true);
-    this->map_scans_pub = this->nh.advertise<sensor_msgs::PointCloud2>("map_scans", 1, true);
-    this->poses_pub = this->nh.advertise<geometry_msgs::PoseArray>("poses", 1000, true);
-    this->markers_pub = this->nh.advertise<visualization_msgs::MarkerArray>("markers", 1000, true);
+    float unique_scan_dist;
+    this->declare_parameter("unique_scan_dist", 0.01);
+    this->get_parameter("unique_scan_dist", unique_scan_dist);
+    this->featureList.update_unique_scan_dist(unique_scan_dist);
+
+    // Subscribers
+    this->pose_sub_group = this->create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
+    auto pose_sub_opt = rclcpp::SubscriptionOptions();
+    pose_sub_opt.callback_group = this->pose_sub_group;
+    this->pose_sub = this->create_subscription<custom_interfaces::msg::OptmapPose>(
+        "pose", 
+        100,
+        std::bind(&OptMapNode::callbackPose, this, std::placeholders::_1), 
+        pose_sub_opt
+    );
+
+    this->descriptor_sub_group = this->create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
+    auto descriptor_sub_opt = rclcpp::SubscriptionOptions();
+    descriptor_sub_opt.callback_group = this->descriptor_sub_group;
+    this->descriptor_sub = this->create_subscription<custom_interfaces::msg::Descriptor>(
+        "descriptor", 
+        1000,
+        std::bind(&OptMapNode::callbackDescriptor, this, std::placeholders::_1), 
+        descriptor_sub_opt
+    );
+
+    this->pc_sub_group = this->create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
+    auto pc_sub_opt = rclcpp::SubscriptionOptions();
+    pc_sub_opt.callback_group = this->pc_sub_group;
+    this->pc_sub = this->create_subscription<sensor_msgs::msg::PointCloud2>(
+        "pointcloud", 
+        10,
+        std::bind(&OptMapNode::callbackPointCloud, this, std::placeholders::_1), 
+        pc_sub_opt
+    );
+
+    this->pose_updates_sub_group = this->create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
+    auto pose_updates_sub_opt = rclcpp::SubscriptionOptions();
+    pose_updates_sub_opt.callback_group = this->pose_updates_sub_group;
+    this->pose_updates_sub = this->create_subscription<custom_interfaces::msg::OptmapPoseArray>(
+        "pose_update",
+        1000,
+        std::bind(&OptMapNode::callbackPoseUpdates, this, std::placeholders::_1),
+        pose_updates_sub_opt
+    );
+    
+    // Publishers
+    this->map_pub = this->create_publisher<sensor_msgs::msg::PointCloud2>("map", 1);
+    this->map_scans_pub = this->create_publisher<sensor_msgs::msg::PointCloud2>("map_scans", 1);
+    this->poses_pub = this->create_publisher<geometry_msgs::msg::PoseArray>("poses", 1000);
+    this->markers_pub = this->create_publisher<visualization_msgs::msg::MarkerArray>("markers", 1000);
 
     this->save_folder = ".";
     this->save_features = false;
@@ -52,8 +112,10 @@ OptMapNode::OptMapNode(ros::NodeHandle node_handle) : nh(node_handle) {
     this->last_del_pose = std::make_pair(last_del_position, last_del_orientation);
     this->last_updated_pose_index = -1;
 
-    ros::Time current_time = ros::Time::now();
-    this->pc_foldername = "./temp-" + std::to_string(current_time.sec) + "-" + std::to_string(current_time.nsec);
+    this->pc_index = 0;
+
+    rclcpp::Time current_time = this->now();
+    this->pc_foldername = "./temp-" + std::to_string(current_time.seconds()) + "-" + std::to_string(current_time.nanoseconds());
     std::filesystem::create_directory(this->pc_foldername);
 }
 
@@ -62,14 +124,15 @@ OptMapNode::~OptMapNode() {
 }
 
 void OptMapNode::clear_temp_pc_storage() {
-    int ret = std::filesystem::remove_all(this->pc_foldername);
+    int ret = boost::filesystem::remove_all(this->pc_foldername);
     std::cout << "Deleted " << ret << " temporary items." << std::endl;
     if (ret == 0) {
-        ROS_INFO("Failed to delete temporary storage for optmap");
+        RCLCPP_INFO(this->get_logger(),"Failed to delete temporary storage for optmap");
     }
 }
 
-void OptMapNode::callbackPose(optmap::OptmapPoseConstPtr msg) {
+void OptMapNode::callbackPose(const custom_interfaces::msg::OptmapPose::SharedPtr msg) {
+
     int scan_index = msg->id;
     this->most_recent_pose = scan_index;
 
@@ -83,7 +146,8 @@ void OptMapNode::callbackPose(optmap::OptmapPoseConstPtr msg) {
     });
 }
 
-void OptMapNode::callbackDescriptor(optmap::DescriptorConstPtr msg) {
+void OptMapNode::callbackDescriptor(const custom_interfaces::msg::Descriptor::SharedPtr msg) {
+
     int scan_index = msg->id;
     this->most_recent_desc = scan_index;
 
@@ -95,7 +159,7 @@ void OptMapNode::callbackDescriptor(optmap::DescriptorConstPtr msg) {
 
     screen_output();
 
-    // Apply the latest loop closure del pose to new features
+    // Temp: check if any new features have been made and try to apply the latest loop closure pose update
     if ((this->last_updated_pose_index < featureList.get_num_features_all_features() - 1) && (this->last_updated_pose_index != -1)) {
         int k = this->last_updated_pose_index + 1;
         while (k < featureList.get_num_features_all_features()) {
@@ -105,12 +169,15 @@ void OptMapNode::callbackDescriptor(optmap::DescriptorConstPtr msg) {
     }
 }
 
-void OptMapNode::callbackPointCloud(sensor_msgs::PointCloud2::ConstPtr pc) {
-    int scan_index = pc->header.seq;
-    this->most_recent_cloud = scan_index;
-    this->recent_time = pc->header.stamp.toSec();
+void OptMapNode::callbackPointCloud(const sensor_msgs::msg::PointCloud2::SharedPtr pc) {
 
-    pcl::PointCloud<pcl::PointXYZ>::Ptr cloud (boost::make_shared<pcl::PointCloud<pcl::PointXYZ>>());
+    // TODO: Associate scans based on timestamps instead of sequence numbers
+    int scan_index = this->pc_index;
+    this->pc_index++;
+    this->most_recent_cloud = scan_index;
+    this->recent_time = pc->header.stamp.sec;
+
+    pcl::PointCloud<pcl::PointXYZ>::Ptr cloud (std::make_shared<pcl::PointCloud<pcl::PointXYZ>>());
     pcl::fromROSMsg(*pc, *cloud);
 
     // split into 100 subfolders for faster indexing
@@ -122,28 +189,28 @@ void OptMapNode::callbackPointCloud(sensor_msgs::PointCloud2::ConstPtr pc) {
         }
         int ret = pcl::io::savePCDFileBinary(cloud_path, *cloud);
         if (ret != 0) {
-            ROS_ERROR("Did not save deskewed point cloud %d correctly", scan_index);
+            RCLCPP_ERROR(this->get_logger(),"Did not save deskewed point cloud %d correctly", scan_index);
             throw ret;
         }
     }
     catch (...) {
-        ROS_ERROR("Error writing to point cloud storage. Check storage.");
+        RCLCPP_ERROR(this->get_logger(),"Error writing to point cloud storage. Check storage.");
         clear_temp_pc_storage();
         return;
     }
 
-    ros::Time timestamp = pc->header.stamp;
+    rclcpp::Time timestamp = pc->header.stamp;
     featureList.append_feature_data(scan_index, [timestamp, cloud_path](Feature& feature) {
         feature.set_timestamp(timestamp);
         feature.set_cloud_path(cloud_path);
     });
 }
 
-// Current: only updates position, not orientation.
-// We look at features that aren't fully uninitialized becauese
+// only updates position, not orientation
+// we look at features that aren't fully uninitialized becauese
 // descriptors may fall behind despite us having corresponding poses
 // pose_k = (k-i)/(j-i) * (del_pose_j - del_pose_i) + del_pose_i + pose_k, where del is the change in pose due to the loop closure.
-void OptMapNode::callbackPoseUpdates(optmap::OptmapPoseArrayPtr msg) {
+void OptMapNode::callbackPoseUpdates(const custom_interfaces::msg::OptmapPoseArray::SharedPtr msg) {
     if (msg->poses.size() == 0 || featureList.get_num_features_all_features() == 0) { return; }
 
     std::unique_lock<std::mutex> featureListLock(featureList.features_mutex);
@@ -221,7 +288,7 @@ void OptMapNode::callbackPoseUpdates(optmap::OptmapPoseArrayPtr msg) {
         del_orientation.w() = 1;
         del_orientation.x() = 0;
         del_orientation.y() = 0;
-        del_orientation.z() = 0; // TODO: Apply orientation updates
+        del_orientation.z() = 0; // TODO: Apply rotation corrections
 
         Feature::Pose del_pose = std::make_pair(del_position, del_orientation);
         featureList.at_all_features(k).set_del_pose(del_pose);
@@ -232,12 +299,12 @@ void OptMapNode::callbackPoseUpdates(optmap::OptmapPoseArrayPtr msg) {
     this->last_updated_pose_index = featureList.get_num_features_all_features() - 1;
 }
 
-void OptMapNode::optimize_streaming(int num_scans, std::vector<float>* x, std::vector<float>* y, std::vector<float>* z, std::vector<float>* r, ros::Time t1, ros::Time t2) {
+void OptMapNode::optimize_streaming(int num_scans, std::vector<float>* x, std::vector<float>* y, std::vector<float>* z, std::vector<float>* r, rclcpp::Time t1, rclcpp::Time t2) {
     
     // check if distances done caluclating
     int queue_size = featureList.get_distances_queue_size();
     if (queue_size != 0) {
-        ROS_ERROR("Still computing feature distances, try again later. Features left: %d", queue_size);
+        RCLCPP_ERROR(this->get_logger(),"Still computing feature distances, try again later. Features left: %d", queue_size);
         return;
     }
 
@@ -247,8 +314,6 @@ void OptMapNode::optimize_streaming(int num_scans, std::vector<float>* x, std::v
 
     std::vector<std::pair<int, float>> features = featureList.get_features_basic();
 
-    // Apply position and time constraints
-    // First check if any position constraints are given
     int num_points;
     if (r == NULL) {
         num_points = 0;
@@ -262,13 +327,12 @@ void OptMapNode::optimize_streaming(int num_scans, std::vector<float>* x, std::v
         centers.push_back(center);
     }
 
-    // TODO: Apply time constraints even if position constraints are not given
     if (num_points != 0) {
         for (int i = 0; i < features.size(); i++) {
             Feature& feature = featureList.at(features[i].first);
             bool constr_met = false;
             for (int j = 0; j < num_points; j++) {
-                if (t1 <= feature.get_timestamp() && feature.get_timestamp() <= t2 && (centers[j] - feature.get_pose().first).norm() <= r->at(j)) {
+                if (t1.seconds() <= feature.get_timestamp().seconds() && feature.get_timestamp().seconds() <= t2.seconds() && (centers[j] - feature.get_pose().first).norm() <= r->at(j)) {
                     constr_met = true;
                 }
                 if (constr_met) { break; }
@@ -281,7 +345,7 @@ void OptMapNode::optimize_streaming(int num_scans, std::vector<float>* x, std::v
     }
 
     if (features.empty()) {
-        ROS_WARN("No scans in selected region.");
+        RCLCPP_WARN(this->get_logger(),"No scans in selected region.");
         return;
     }
 
@@ -310,19 +374,20 @@ void OptMapNode::optimize_streaming(int num_scans, std::vector<float>* x, std::v
     if (this->save_features) { this->save_scans = true; } // save pointclouds if saving features
 
     if (this->publish_map) {
-        sensor_msgs::PointCloud2 cloud_ros;
+        sensor_msgs::msg::PointCloud2 cloud_ros;
         pcl::toROSMsg(*result_map, cloud_ros);
         cloud_ros.header.frame_id = this->map_frame;
-        this->map_pub.publish(cloud_ros);
+        this->map_pub->publish(cloud_ros);
         
-        ROS_INFO("Published map.");
+        RCLCPP_INFO(this->get_logger(),"Published map.");
     }
 
     if (this->save_map) {
+        int next = 2;
         std::string save_path = save_folder + "/optmap.pcd";
         pcl::io::savePCDFileBinary(save_path, *result_map);
 
-        ROS_INFO("Saved map to %s.", save_path.c_str());
+        RCLCPP_INFO(this->get_logger(),"Saved map to %s.", save_path.c_str());
     }
 
     if (this->publish_poses || this->save_poses) {
@@ -353,7 +418,7 @@ void OptMapNode::optimize_streaming_helper(std::vector<std::pair<int,float>> fea
 
     if (features.size() < num_scans) {
         num_scans = features.size();
-        ROS_WARN("Requested optmap output with more scans than are currently available");
+        RCLCPP_WARN(this->get_logger(),"Requested optmap output with more scans than are currently available");
     }
 
     // algorithm parameters
@@ -528,7 +593,7 @@ void OptMapNode::optimize_streaming_helper(std::vector<std::pair<int,float>> fea
         for (int j = 0; j < O.size(); j++) {
 
             // skip if cardinality constraint or OPT reached
-            if (curr_feature_indices[j].size() >= num_scans) {
+            if (curr_feature_indices[j].size() >= num_scans) {// || O[j] <= max_score-prev_scores[j]) {
                 continue;
             }
 
@@ -698,12 +763,14 @@ std::vector<int> OptMapNode::gen_heur_sol(const std::vector<int>& eval_feature_i
 }
 
 float OptMapNode::overlap_from_desc(float dist) {
-    if (dist > 1.1) {
+    if (dist > 1) {
         return 0;
     }
     else {
+        // Undershoot true overlap for any high dimension hypersphere
+        return 1-dist;
         // fourth order polynomial fit to overlap area of spherical caps on 255-hypersphere
-        return std::min(1., 0.7237*std::pow(dist, 4) - 2.4406*std::pow(dist, 3) + 1.1421*std::pow(dist, 2) - 0.3387*dist + 1.0109);
+        // return std::min(1., 0.7237*std::pow(dist, 4) - 2.4406*std::pow(dist, 3) + 1.1421*std::pow(dist, 2) - 0.3387*dist + 1.0109);
     }
 }
 
@@ -779,7 +846,8 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr OptMapNode::build_pointcloud_map(const std::
         }
 
         if (del_pose.has_value()) {
-            // TODO: Apply correct orientation updates
+            // TODO: To make orientation correct, transform point cloud to origin, apply new orientation, then translate to new position 
+
             Eigen::Matrix4f T = Eigen::Matrix4f::Identity();
             T.block(0, 3, 3, 1) = del_pose.value().first;
             T.block(0, 0, 3, 3) = del_pose.value().second.toRotationMatrix();
@@ -795,30 +863,30 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr OptMapNode::build_pointcloud_map(const std::
     return map;
 }
 
-geometry_msgs::PoseArray::Ptr OptMapNode::build_pose_array(const std::vector<int>& feature_indices) {
-    geometry_msgs::PoseArray::Ptr pa (std::make_shared<geometry_msgs::PoseArray>());
+geometry_msgs::msg::PoseArray::Ptr OptMapNode::build_pose_array(const std::vector<int>& feature_indices) {
+    geometry_msgs::msg::PoseArray::Ptr pa (std::make_shared<geometry_msgs::msg::PoseArray>());
     pa->header.frame_id = this->map_frame;
     
-    visualization_msgs::MarkerArray mArray;
-    visualization_msgs::Marker node;
+    visualization_msgs::msg::MarkerArray mArray;
+    visualization_msgs::msg::Marker node;
     node.header.frame_id = this->map_frame;
-    node.header.stamp = ros::Time::now();
-    node.action = visualization_msgs::Marker::ADD;
-    node.type = visualization_msgs::Marker::SPHERE_LIST;
+    node.header.stamp = this->now();
+    node.action = visualization_msgs::msg::Marker::ADD;
+    node.type = visualization_msgs::msg::Marker::SPHERE_LIST;
     node.ns = "nodes";
     node.id = 0;
     node.pose.orientation.w = 1;
     node.scale.x = 1; node.scale.y = 1; node.scale.z = 1;
     node.color.r = 0; node.color.g = 1; node.color.b = 0;
     node.color.a = 0.75;
-    node.lifetime = ros::Duration();
+    node.lifetime = rclcpp::Duration(0, 0);
 
     {
         for (int feature_index : feature_indices) {
             Feature& feature = featureList.at(feature_index);
             const Feature::Pose& pose = feature.get_pose();
 
-            geometry_msgs::Pose p;
+            geometry_msgs::msg::Pose p;
             p.position.x = pose.first.x();
             p.position.y = pose.first.y();
             p.position.z = pose.first.z();
@@ -826,7 +894,7 @@ geometry_msgs::PoseArray::Ptr OptMapNode::build_pose_array(const std::vector<int
             p.orientation.x = pose.second.x();
             p.orientation.y = pose.second.y();
             p.orientation.z = pose.second.z();
-
+            
             std::optional<Feature::Pose> del_pose = feature.get_del_pose();
             if (del_pose.has_value()) {
                 // TODO: Apply del orientation
@@ -837,7 +905,7 @@ geometry_msgs::PoseArray::Ptr OptMapNode::build_pose_array(const std::vector<int
 
             pa->poses.push_back(p);
 
-            geometry_msgs::Point pt;
+            geometry_msgs::msg::Point pt;
             pt.x = pose.first.x();
             pt.y = pose.first.y();
             pt.z = pose.first.z();        
@@ -846,11 +914,11 @@ geometry_msgs::PoseArray::Ptr OptMapNode::build_pose_array(const std::vector<int
     }
 
     if (this->publish_poses) {
-        this->poses_pub.publish(*pa);
+        this->poses_pub->publish(*pa);
         mArray.markers.push_back(node);
-        this->markers_pub.publish(mArray);
+        this->markers_pub->publish(mArray);
 
-        ROS_INFO("Published poses and markers.");
+        RCLCPP_INFO(this->get_logger(),"Published poses and markers.");
     }
 
     if (this->save_poses) {
@@ -858,7 +926,7 @@ geometry_msgs::PoseArray::Ptr OptMapNode::build_pose_array(const std::vector<int
         posesTxt.open(save_folder + "/poses.txt");
 
         if (!posesTxt.is_open()) {
-            ROS_ERROR("Error opening %s", (save_folder + "/poses.txt").c_str());
+            RCLCPP_ERROR(this->get_logger(),"Error opening %s", (save_folder + "/poses.txt").c_str());
         }
 
         else {
@@ -877,7 +945,7 @@ geometry_msgs::PoseArray::Ptr OptMapNode::build_pose_array(const std::vector<int
             }
 
             posesTxt.close();
-            ROS_INFO("Saved poses to %s.", (save_folder + "/poses.txt").c_str());
+            RCLCPP_INFO(this->get_logger(),"Saved poses to %s.", (save_folder + "/poses.txt").c_str());
         }
     }
 
@@ -896,10 +964,10 @@ void OptMapNode::export_scans(const std::vector<int>& feature_indices) {
             std::string cloud_path = featureList.at(index).get_cloud_path();
             pcl::io::loadPCDFile<pcl::PointXYZ> (cloud_path, *pc);
 
-            sensor_msgs::PointCloud2 cloud_ros;
+            sensor_msgs::msg::PointCloud2 cloud_ros;
             pcl::toROSMsg(*pc, cloud_ros);
             cloud_ros.header.frame_id = this->map_frame;
-            this->map_scans_pub.publish(cloud_ros);
+            this->map_scans_pub->publish(cloud_ros);
         }
 
         if (this->save_scans) {
@@ -908,8 +976,8 @@ void OptMapNode::export_scans(const std::vector<int>& feature_indices) {
         }
     }
 
-    if (this->publish_scans) { ROS_INFO("Published map scans."); }
-    if (this->save_scans) { ROS_INFO("Saved map scans to %s.", (save_folder + "/map_scans").c_str()); }
+    if (this->publish_scans) { RCLCPP_INFO(this->get_logger(),"Published map scans."); }
+    if (this->save_scans) { RCLCPP_INFO(this->get_logger(),"Saved map scans to %s.", (save_folder + "/map_scans").c_str()); }
 }
 
 /* 
@@ -920,7 +988,7 @@ save_folder/
 features.txt format:
 [NUM FEATURES]
 [m_scan_index #1]
-[m_timestamp.sec #1] [m_timestamp.nsec #1]
+[m_timestamp.sec #1] [m_timestamp.nanosec #1]
 [m_pose.position.x #1] [m_pose.position.y #1] [m_pose.position.z #1] [m_pose.orientation.w #1] [m_pose.orientation.x #1] [m_pose.orientation.y #1] [m_pose.orientation.z #1]
 [m_descriptor[0] #1] [m_descriptor[1] #1] ... [m_descriptor[255] #1]
 [m_cloud_path #1]
@@ -930,7 +998,6 @@ features.txt format:
 ...
 [m_cloud_path #n]
 */
-
 void OptMapNode::save_features_to_folder(const std::vector<int>& feature_indices) {
     if (!std::filesystem::exists(save_folder)) {
         std::filesystem::create_directory(save_folder);
@@ -939,7 +1006,7 @@ void OptMapNode::save_features_to_folder(const std::vector<int>& feature_indices
     featuresTxt.open(save_folder + "/features.txt");
 
     if (!featuresTxt.is_open()) {
-        ROS_ERROR("Error opening %s", (save_folder + "/features.txt").c_str());
+        RCLCPP_ERROR(this->get_logger(),"Error opening %s", (save_folder + "/features.txt").c_str());
         return;
     }
 
@@ -950,7 +1017,7 @@ void OptMapNode::save_features_to_folder(const std::vector<int>& feature_indices
         Feature::Descriptor desc = f.get_descriptor();
 
         featuresTxt << f.get_scan_index() << std::endl;
-        featuresTxt << f.get_timestamp().sec << " " << f.get_timestamp().nsec << std::endl;
+        featuresTxt << f.get_timestamp().seconds() << " " << f.get_timestamp().nanoseconds() << std::endl;
         featuresTxt << pose.first.x() << " " << pose.first.y() << " " << pose.first.z() << " " << pose.second.w() << " " << pose.second.x() << " " << pose.second.y() << " " << pose.second.z() << std::endl;
         for (int i = 0; i < desc.rows(); i++)
             featuresTxt << desc[i] << " ";
@@ -959,7 +1026,7 @@ void OptMapNode::save_features_to_folder(const std::vector<int>& feature_indices
     }
     
     featuresTxt.close();
-    ROS_INFO("Saved features to %s", save_folder.c_str());
+    RCLCPP_INFO(this->get_logger(),"Saved features to %s", save_folder.c_str());
 }
 
 void OptMapNode::screen_output() {

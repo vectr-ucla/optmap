@@ -1,0 +1,27 @@
+# Return a submap with specified number of scans,
+# where scans can only be selected if their center
+# is within the ball defined by xyzr.
+# Scan timesteps must also lie between t1 and t2
+# using Unix time.
+int32 num_scans
+float32[] x
+float32[] y
+float32[] z
+float32[] r
+builtin_interfaces/Time t1
+builtin_interfaces/Time t2
+string output_folder
+bool save_features
+bool pub_pose
+bool save_pose
+bool pub_map
+bool save_map
+bool pub_scans
+bool save_scans
+---
+# Return includes a combined pointcloud with all 
+# scans and the poses of each scan used in the
+# submap.
+bool success
+sensor_msgs/PointCloud2 submap
+geometry_msgs/PoseArray poses

@@ -8,7 +8,7 @@ by their scan number.
 
 Adding to/modifying the collection is done by specifying a scan number (so that the caller
 does not have to be concerned with the order of operations required to maintain sortedness).
-Accessing an item in the collection is done by specifying an index in the underlying list.
+Accessing an item in the collection is done by specifying an index into the underlying list.
 
 Only features that are "fully-initialized" (all their fields are set), and thus usable, are kept.
 
@@ -19,6 +19,8 @@ class SortedFeatureList {
     public:
         SortedFeatureList();
         ~SortedFeatureList();
+
+        void update_unique_scan_dist(float usd) { this->unique_scan_dist = usd; }
 
         // accessing the feature returned by this method requires acquiring the lock on `features_mutex`
         inline Feature& at(int feature_index) {
@@ -37,15 +39,15 @@ class SortedFeatureList {
             return descriptor_distances[feature_index1][feature_index2];
         };
 
-        std::vector<std::pair<int,float>>& get_features_basic() {
+        inline std::vector<std::pair<int,float>> get_features_basic() {
             return features_basic;
         }
 
-        float get_total_traj_dist() const {
+        inline float get_total_traj_dist() const {
             return total_traj_dist;
         }
 
-        const float get_element_weighting(int feature_index) const {
+        inline const float get_element_weighting(int feature_index) const {
             assert(feature_index < get_num_features());
             return contents[feature_index].get_element_weighting();
         }

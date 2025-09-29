@@ -1,6 +1,7 @@
-nn:
-  fov_up: 22.5
-  fov_down: -22.5
+/**:
+  ros__parameters:
+    fov_up: 45.
+    fov_down: -45.
 
 # Ouster OS0:       45° up, -45° down
 # Ouster OS1:       22.5° up, -22.5° down

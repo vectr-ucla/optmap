@@ -1,3 +1,16 @@
+#pragma once
+
+#include "custom_interfaces/msg/descriptor.hpp"
+#include "custom_interfaces/msg/optmap_pose.hpp"
+#include "custom_interfaces/msg/optmap_pose_array.hpp"
+
+#include "custom_interfaces/srv/optmap_full.hpp"
+#include "custom_interfaces/srv/optmap_position.hpp"
+#include "custom_interfaces/srv/optmap_position_and_time.hpp"
+#include "custom_interfaces/srv/optmap_set_voxelization.hpp"
+#include "custom_interfaces/srv/optmap_load_initial_sol.hpp"
+
+// SYSTEM
 #include <utility>
 #include <fstream>
 #include <iostream>
@@ -5,26 +18,28 @@
 #include <string>
 #include <random>
 #include <sys/times.h>
-#include <sys/vtimes.h>
 #include <thread>
 #include <malloc.h>
 #include <condition_variable>
 #include <optional>
+#include <filesystem>
+#include <vector>
+#include <queue>
+#include <omp.h>
+#include <boost/filesystem.hpp>
+#include <Eigen/Dense>
 
 // ROS
-#include <geometry_msgs/PoseArray.h>
-#include <geometry_msgs/PoseStamped.h>
-#include <nav_msgs/Odometry.h>
-#include <nav_msgs/Path.h>
-#include <ros/ros.h>
-#include <ros/time.h>
-#include <rosbag/bag.h>
-#include <sensor_msgs/PointCloud2.h>
-#include <std_msgs/Float32MultiArray.h>
-#include <std_msgs/Float64MultiArray.h>
-#include <std_msgs/Int32.h>
-#include <visualization_msgs/Marker.h>
-#include <visualization_msgs/MarkerArray.h>
+#include "rclcpp/rclcpp.hpp"
+#include <geometry_msgs/msg/pose_array.hpp>
+#include <geometry_msgs/msg/pose_stamped.hpp>
+#include <nav_msgs/msg/odometry.hpp>
+#include <nav_msgs/msg/path.hpp>
+#include <sensor_msgs/msg/point_cloud2.hpp>
+#include <std_msgs/msg/float32_multi_array.hpp>
+#include <std_msgs/msg/int32.hpp>
+#include <visualization_msgs/msg/marker.hpp>
+#include <visualization_msgs/msg/marker_array.hpp>
 
 // PCL
 #define PCL_NO_PRECOMPILE
@@ -34,8 +49,6 @@
 #include <pcl/io/pcd_io.h>
 #include <pcl_conversions/pcl_conversions.h>
 #include <pcl_ros/impl/transforms.hpp>
-#include <pcl_ros/point_cloud.h>
-#include <pcl_ros/transforms.h>
 #include <pcl/filters/passthrough.h>
 
 class Feature {
@@ -46,7 +59,7 @@ class Feature {
         Feature(int scan_index) : m_scan_index(scan_index), m_init_flags(Feature::EMPTY) {}
 
         inline int get_scan_index() const { return m_scan_index; }
-        inline ros::Time get_timestamp() const { return m_timestamp; }
+        inline rclcpp::Time get_timestamp() const { return m_timestamp; }
         inline const Pose& get_pose() const { return m_pose; }
         inline const Descriptor& get_descriptor() const { return m_descriptor; }
         inline std::string get_cloud_path() const { return m_cloud_path; }
@@ -56,7 +69,7 @@ class Feature {
 
         inline bool is_fully_init() const { return m_init_flags == FULLY_INIT; }
 
-        inline void set_timestamp(ros::Time time) { m_timestamp = time; m_init_flags |= TIME_INIT; }
+        inline void set_timestamp(rclcpp::Time time) { m_timestamp = time; m_init_flags |= TIME_INIT; }
         inline void set_pose(const Pose& pose) { m_pose = pose; m_init_flags |= POSE_INIT; }
         inline void set_descriptor(const Descriptor& desc) { m_descriptor = desc; m_init_flags |= DESCRIPTOR_INIT; }
         inline void set_cloud_path(std::string cloud_path) { m_cloud_path = cloud_path; m_init_flags |= CLOUD_INIT; }
@@ -76,7 +89,7 @@ class Feature {
     private:
         int m_scan_index;
 
-        ros::Time m_timestamp;
+        rclcpp::Time m_timestamp;
         Pose m_pose;
         Descriptor m_descriptor;
         std::string m_cloud_path;

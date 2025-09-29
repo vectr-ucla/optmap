@@ -1,21 +1,10 @@
 #pragma once
 
-#include <filesystem>
-
 #include "optmap/SortedFeatureList.h"
 
-#include <optmap/optmap_full.h>
-#include <optmap/optmap_position.h>
-#include <optmap/optmap_position_and_time.h>
-#include <optmap/optmap_set_voxelization.h>
-
-#include <optmap/Descriptor.h>
-#include <optmap/OptmapPose.h>
-#include <optmap/OptmapPoseArray.h>
-
-class OptMapNode {
+class OptMapNode: public rclcpp::Node {
     public:
-        OptMapNode(ros::NodeHandle node_handle);
+        OptMapNode();
         ~OptMapNode();
 
         int get_num_features() { return this->featureList.get_num_features(); }
@@ -26,7 +15,7 @@ class OptMapNode {
         // where all scans must be within a radius `r` of `x`, `y`, `z` and have a time `t` such that `t1` <= `t` <= `t2`.
         // Returns a vector of feature indices, which can be used in downstream functions. Also sets `result_map`.
         void optimize_streaming(int num_scans, std::vector<float>* x=NULL, std::vector<float>* y=NULL, std::vector<float>* z=NULL, std::vector<float>* r=NULL,
-                                ros::Time t1=ros::Time::MIN, ros::Time t2=ros::Time::MAX);
+                                rclcpp::Time t1=rclcpp::Time(0), rclcpp::Time t2=rclcpp::Time(std::numeric_limits<int64_t>::max()));
 
         // config
         void set_save_folder(std::string val)       { save_folder = val; }
@@ -42,16 +31,16 @@ class OptMapNode {
     private:
         void clear_temp_pc_storage();
 
-        void callbackPose(optmap::OptmapPoseConstPtr msg);
-        void callbackDescriptor(optmap::DescriptorConstPtr msg);
-        void callbackPointCloud(sensor_msgs::PointCloud2::ConstPtr pc);
-        void callbackPoseUpdates(optmap::OptmapPoseArrayPtr msg);
+        void callbackPose(const custom_interfaces::msg::OptmapPose::SharedPtr msg);
+        void callbackDescriptor(const custom_interfaces::msg::Descriptor::SharedPtr msg);
+        void callbackPointCloud(const sensor_msgs::msg::PointCloud2::SharedPtr pc);
+        void callbackPoseUpdates(const custom_interfaces::msg::OptmapPoseArray::SharedPtr msg);
 
         // Aggregates the pointclouds from the provided feature indices. Can optionally save or publish the full map, and / or save each scan if publish/save_map and save_scans are set to true
         pcl::PointCloud<pcl::PointXYZ>::Ptr build_pointcloud_map(const std::vector<int>& feature_indices);
 
         // Returns a list of poses given a set of feature indices. Can optionally publish the pose array if publish_poses is set to true
-        geometry_msgs::PoseArray::Ptr build_pose_array(const std::vector<int>& feature_indices);
+        geometry_msgs::msg::PoseArray::Ptr build_pose_array(const std::vector<int>& feature_indices);
 
         // Save and/or publishs scans specified by `feature_indices`
         void export_scans(const std::vector<int>& feature_indices);
@@ -110,20 +99,20 @@ class OptMapNode {
         std::vector<int> result_indices;
         pcl::PointCloud<pcl::PointXYZ>::Ptr result_map;
 
-        // ROS
-        ros::NodeHandle nh;
+        rclcpp::CallbackGroup::SharedPtr pose_sub_group;
+        rclcpp::CallbackGroup::SharedPtr descriptor_sub_group;
+        rclcpp::CallbackGroup::SharedPtr pc_sub_group;
+        rclcpp::CallbackGroup::SharedPtr pose_updates_sub_group;
 
-        // Subscribers
-        ros::Subscriber pose_sub;
-        ros::Subscriber descriptor_sub;
-        ros::Subscriber pc_sub;
-        ros::Subscriber pose_updates_sub;
+        rclcpp::Subscription<custom_interfaces::msg::OptmapPose>::SharedPtr pose_sub;
+        rclcpp::Subscription<custom_interfaces::msg::Descriptor>::SharedPtr descriptor_sub;
+        rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr pc_sub;     
+        rclcpp::Subscription<custom_interfaces::msg::OptmapPoseArray>::SharedPtr pose_updates_sub;   
 
-        // Publishers
-        ros::Publisher map_pub;
-        ros::Publisher map_scans_pub;
-        ros::Publisher poses_pub;
-        ros::Publisher markers_pub;
+        rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr map_pub;
+        rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr map_scans_pub;
+        rclcpp::Publisher<geometry_msgs::msg::PoseArray>::SharedPtr poses_pub;
+        rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr markers_pub;
 
         SortedFeatureList featureList;
 
@@ -133,6 +122,7 @@ class OptMapNode {
         int most_recent_cloud;
 
         int num_threads;
+        int pc_index; // TODO: Do not assume all point clouds are received in order
 
         // output settings
         std::string pc_foldername;

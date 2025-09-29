@@ -1,23 +1,24 @@
-optmap:
-  version: 1.0.0
-  debug: true # Generates output debug file if any scans or poses are saved
+/**:
+  ros__parameters:
+    version: 1.0.0
+    debug: true # Generates output debug file if any scans or poses are saved
 
-  unique_scan_dist: 0.025
-  fraction_eval_scans: 0.25
-  voxelize: 0.0
-  
-  # max number of iterations without a change in the optimal value
-  # to wait before notifying the map building thread
-  unchanged_iters_max: 20
+    unique_scan_dist: 0.025
+    fraction_eval_scans: 0.25
+    voxelize: 0.0
+    
+    # max number of iterations without a change in the optimal value
+    # that we wait before notifying the map building thread
+    unchanged_iters_max: 20
 
-  dynamic_reordering: true
-  sorted_set_factor: 3 # Set to -1 to use entire feature set
-  dist_heur_radius: 15.0
+    dynamic_reordering: true
+    sorted_set_factor: 3. # Set to -1 to use entire feature set
+    dist_heur_radius: 15.0
 
-  # Map box constraints (>9999 to disable)
-  box_min_x: 1e5
-  box_max_x: 1e5
-  box_min_y: 1e5
-  box_max_y: 1e5
-  box_min_z: 1e5
-  box_max_z: 1e5
+    # Map box constraints (>9999 to disable)
+    box_min_x: -1e9
+    box_max_x: 1e9
+    box_min_y: -1e9
+    box_max_y: 1e9
+    box_min_z: -1e9
+    box_max_z: 1e9

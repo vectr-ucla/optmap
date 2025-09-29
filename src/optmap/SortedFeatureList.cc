@@ -1,8 +1,6 @@
 #include "optmap/SortedFeatureList.h"
 
 SortedFeatureList::SortedFeatureList() {
-    ros::param::param<float>("~optmap/unique_scan_dist", unique_scan_dist, 0.01);
-
     prev_feature_index = -1;
     total_traj_dist = 0;
     dist_prev_included_element = 0;
@@ -97,7 +95,7 @@ void SortedFeatureList::append_feature_data(int scan_index, const std::function<
         descriptor_distances_queue_cv.notify_one();
 
         if (descriptor_distances_queue.size() > 20) {
-            ROS_WARN("Distances queue has size %ld. Possible backup.\n", descriptor_distances_queue.size());
+            RCLCPP_WARN(rclcpp::get_logger("rclcpp"),"Distances queue has size %ld. Possible backup.\n", descriptor_distances_queue.size());
         }
     }
 }
