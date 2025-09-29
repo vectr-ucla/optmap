@@ -9,7 +9,6 @@ time t1
 time t2
 string output_folder
 bool save_features
-bool use_initial_sol
 bool pub_pose
 bool save_pose
 bool pub_map
