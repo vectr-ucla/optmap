@@ -80,6 +80,8 @@ void SortedFeatureList::append_feature_data(int scan_index, const std::function<
             return; 
         }
 
+        dist_prev_included_element = 0;
+
         contents[feature_index].set_element_weighting(feat_dist_from_prev);
         features_basic.push_back({features_basic.size(), feat_dist_from_prev});
         total_traj_dist += feat_dist_from_prev;
