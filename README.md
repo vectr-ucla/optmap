@@ -1,7 +1,7 @@
 # OptMap
 Real-time geometric map distillation for fast and flexible LiDAR map generation using streaming submodular maximization.
 
-This ROS2 branch includes custom message and service files which should be added to a custom interfaces package ([example][https://docs.ros.org/en/foxy/Tutorials/Beginner-Client-Libraries/Single-Package-Define-And-Use-Interface.html]).
+This ROS2 branch includes custom message and service files which should be added to a custom interfaces package (example)[https://docs.ros.org/en/foxy/Tutorials/Beginner-Client-Libraries/Single-Package-Define-And-Use-Interface.html].
 
 <br>
 <p align='center'>
