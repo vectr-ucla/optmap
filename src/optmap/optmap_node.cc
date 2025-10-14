@@ -14,8 +14,8 @@ std::string get_save_folder(std::string save_folder) {
 
 bool service_full(OptMapNode* node, optmap::optmap_full::Request& req, optmap::optmap_full::Response& res) {
     std::cout << "\n";
-    ROS_INFO("Starting map optimization. \nTotal number of available features: %d \nParameters:\n - num_scans=%d\n - save_folder=%s\n - save_features=%d\n - use_initial_sol=%d\n - publish_poses=%d\n - save_poses=%d\n - publish_map=%d\n - save_map=%d\n - publish_scans=%d\n - save_scans=%d\n\n",
-            node->get_num_features(), req.num_scans, req.output_folder.c_str(), req.save_features, req.use_initial_sol, req.pub_pose, req.save_pose, req.pub_map, req.save_map, req.pub_scans, req.save_scans);
+    ROS_INFO("Starting map optimization. \nTotal number of available features: %d \nParameters:\n - num_scans=%d\n - save_folder=%s\n - save_features=%d\n - publish_poses=%d\n - save_poses=%d\n - publish_map=%d\n - save_map=%d\n - publish_scans=%d\n - save_scans=%d\n\n",
+            node->get_num_features(), req.num_scans, req.output_folder.c_str(), req.save_features, req.pub_pose, req.save_pose, req.pub_map, req.save_map, req.pub_scans, req.save_scans);
     auto total_start_time = std::chrono::steady_clock::now();
     
     if (req.save_features || req.save_map || req.save_pose || req.save_scans) {
@@ -42,8 +42,8 @@ bool service_full(OptMapNode* node, optmap::optmap_full::Request& req, optmap::o
 
 bool service_position(OptMapNode* node, optmap::optmap_position::Request& req, optmap::optmap_position::Response& res) {
     std::cout << "\n";
-    ROS_INFO("Starting map optimization. \nTotal number of available features: %d \nParameters:\n - num_scans=%d\n - save_folder=%s\n - save_features=%d\n - use_initial_sol=%d\n - publish_poses=%d\n - save_poses=%d\n - publish_map=%d\n - save_map=%d\n - publish_scans=%d\n - save_scans=%d\n\n",
-            node->get_num_features(), req.num_scans, req.output_folder.c_str(), req.save_features, req.use_initial_sol, req.pub_pose, req.save_pose, req.pub_map, req.save_map, req.pub_scans, req.save_scans);
+    ROS_INFO("Starting map optimization. \nTotal number of available features: %d \nParameters:\n - num_scans=%d\n - save_folder=%s\n - save_features=%d\n - publish_poses=%d\n - save_poses=%d\n - publish_map=%d\n - save_map=%d\n - publish_scans=%d\n - save_scans=%d\n\n",
+            node->get_num_features(), req.num_scans, req.output_folder.c_str(), req.save_features, req.pub_pose, req.save_pose, req.pub_map, req.save_map, req.pub_scans, req.save_scans);
     auto total_start_time = std::chrono::steady_clock::now();
     
     std::vector<float> x;
@@ -79,8 +79,8 @@ bool service_position(OptMapNode* node, optmap::optmap_position::Request& req, o
 
 bool service_position_and_time(OptMapNode* node, optmap::optmap_position_and_time::Request& req, optmap::optmap_position_and_time::Response& res) {
     std::cout << "\n";
-    ROS_INFO("Starting map optimization. \nTotal number of available features: %d \nParameters:\n - num_scans=%d\n - save_folder=%s\n - save_features=%d\n - use_initial_sol=%d\n - publish_poses=%d\n - save_poses=%d\n - publish_map=%d\n - save_map=%d\n - publish_scans=%d\n - save_scans=%d\n\n",
-            node->get_num_features(), req.num_scans, req.output_folder.c_str(), req.save_features, req.use_initial_sol, req.pub_pose, req.save_pose, req.pub_map, req.save_map, req.pub_scans, req.save_scans);
+    ROS_INFO("Starting map optimization. \nTotal number of available features: %d \nParameters:\n - num_scans=%d\n - save_folder=%s\n - save_features=%d\n - publish_poses=%d\n - save_poses=%d\n - publish_map=%d\n - save_map=%d\n - publish_scans=%d\n - save_scans=%d\n\n",
+            node->get_num_features(), req.num_scans, req.output_folder.c_str(), req.save_features, req.pub_pose, req.save_pose, req.pub_map, req.save_map, req.pub_scans, req.save_scans);
     auto total_start_time = std::chrono::steady_clock::now();
     
     std::vector<float> x;

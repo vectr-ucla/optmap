@@ -744,7 +744,7 @@ void OptMapNode::build_map_worker() {
 
 pcl::PointCloud<pcl::PointXYZ>::Ptr OptMapNode::build_pointcloud_map(const std::vector<int>& feature_indices) {
 
-    pcl::PointCloud<pcl::PointXYZ>::Ptr map (std::make_shared<pcl::PointCloud<pcl::PointXYZ>>());
+    pcl::PointCloud<pcl::PointXYZ>::Ptr map (boost::make_shared<pcl::PointCloud<pcl::PointXYZ>>());
 
     std::optional<Feature::Pose> del_pose;
     for (int index : feature_indices) {
@@ -796,7 +796,7 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr OptMapNode::build_pointcloud_map(const std::
 }
 
 geometry_msgs::PoseArray::Ptr OptMapNode::build_pose_array(const std::vector<int>& feature_indices) {
-    geometry_msgs::PoseArray::Ptr pa (std::make_shared<geometry_msgs::PoseArray>());
+    geometry_msgs::PoseArray::Ptr pa (boost::make_shared<geometry_msgs::PoseArray>());
     pa->header.frame_id = this->map_frame;
     
     visualization_msgs::MarkerArray mArray;
