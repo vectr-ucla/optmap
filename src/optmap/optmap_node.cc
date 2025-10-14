@@ -17,7 +17,7 @@ std::string get_save_folder(std::string save_folder) {
 
 void service_full(OptMapNode* node, const std::shared_ptr<custom_interfaces::srv::OptmapFull::Request> req, std::shared_ptr<custom_interfaces::srv::OptmapFull::Response> res) {
     std::cout << "\n";
-    RCLCPP_INFO(rclcpp::get_logger("rclcpp"),"Starting map optimization. \nTotal number of available features: %d \nParameters:\n - num_scans=%d\n - save_folder=%s\n - save_features=%d\n - use_initial_sol=%d\n - publish_poses=%d\n - save_poses=%d\n - publish_map=%d\n - save_map=%d\n - publish_scans=%d\n - save_scans=%d\n\n",
+    RCLCPP_INFO(rclcpp::get_logger("rclcpp"),"Starting map optimization. \nTotal number of available features: %d \nParameters:\n - num_scans=%d\n - save_folder=%s\n - save_features=%d\n - publish_poses=%d\n - save_poses=%d\n - publish_map=%d\n - save_map=%d\n - publish_scans=%d\n - save_scans=%d\n\n",
             node->get_num_features(), req->num_scans, req->output_folder.c_str(), req->save_features, req->pub_pose, req->save_pose, req->pub_map, req->save_map, req->pub_scans, req->save_scans);
     auto total_start_time = std::chrono::steady_clock::now();
     
@@ -50,7 +50,7 @@ void service_full(OptMapNode* node, const std::shared_ptr<custom_interfaces::srv
 
 void service_position(OptMapNode* node, const std::shared_ptr<custom_interfaces::srv::OptmapPosition::Request> req, std::shared_ptr<custom_interfaces::srv::OptmapPosition::Response> res) {
     std::cout << "\n";
-    RCLCPP_INFO(rclcpp::get_logger("rclcpp"),"Starting map optimization. \nTotal number of available features: %d \nParameters:\n - num_scans=%d\n - save_folder=%s\n - save_features=%d\n - use_initial_sol=%d\n - publish_poses=%d\n - save_poses=%d\n - publish_map=%d\n - save_map=%d\n - publish_scans=%d\n - save_scans=%d\n\n",
+    RCLCPP_INFO(rclcpp::get_logger("rclcpp"),"Starting map optimization. \nTotal number of available features: %d \nParameters:\n - num_scans=%d\n - save_folder=%s\n - save_features=%d\n - publish_poses=%d\n - save_poses=%d\n - publish_map=%d\n - save_map=%d\n - publish_scans=%d\n - save_scans=%d\n\n",
             node->get_num_features(), req->num_scans, req->output_folder.c_str(), req->save_features, req->pub_pose, req->save_pose, req->pub_map, req->save_map, req->pub_scans, req->save_scans);
     auto total_start_time = std::chrono::steady_clock::now();
     
@@ -92,7 +92,7 @@ void service_position(OptMapNode* node, const std::shared_ptr<custom_interfaces:
 
 void service_position_and_time(OptMapNode* node, const std::shared_ptr<custom_interfaces::srv::OptmapPositionAndTime::Request> req, std::shared_ptr<custom_interfaces::srv::OptmapPositionAndTime::Response> res) {
     std::cout << "\n";
-    RCLCPP_INFO(rclcpp::get_logger("rclcpp"),"Starting map optimization. \nTotal number of available features: %d \nParameters:\n - num_scans=%d\n - save_folder=%s\n - save_features=%d\n - use_initial_sol=%d\n - publish_poses=%d\n - save_poses=%d\n - publish_map=%d\n - save_map=%d\n - publish_scans=%d\n - save_scans=%d\n\n",
+    RCLCPP_INFO(rclcpp::get_logger("rclcpp"),"Starting map optimization. \nTotal number of available features: %d \nParameters:\n - num_scans=%d\n - save_folder=%s\n - save_features=%d\n - publish_poses=%d\n - save_poses=%d\n - publish_map=%d\n - save_map=%d\n - publish_scans=%d\n - save_scans=%d\n\n",
             node->get_num_features(), req->num_scans, req->output_folder.c_str(), req->save_features, req->pub_pose, req->save_pose, req->pub_map, req->save_map, req->pub_scans, req->save_scans);
     auto total_start_time = std::chrono::steady_clock::now();
     
