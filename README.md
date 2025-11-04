@@ -24,7 +24,7 @@ sudo apt install libomp-dev libeigen3-dev ros-humble-pcl-ros
 
 Python dependencies for the descriptor neural network are found in scripts/nn/pkg_install.txt. Instructions for installing pytorch found [here](https://pytorch.org/get-started/locally/) and instructions for installing nvidia drivers found [here](https://documentation.ubuntu.com/server/how-to/graphics/install-nvidia-drivers/).
 
-Download weights for the descriptor neural network from [https://drive.google.com/file/d/1pry7TpMq2wzfnhBgmKWKNBYuHVmOs_jM/view?usp=sharing](https://drive.google.com/file/d/1pry7TpMq2wzfnhBgmKWKNBYuHVmOs_jM/view?usp=sharing) and save them to scripts/nn/.
+Download weights for the descriptor neural network from [https://drive.google.com/file/d/1pry7TpMq2wzfnhBgmKWKNBYuHVmOs_jM/view?usp=sharing](https://drive.google.com/file/d/1pry7TpMq2wzfnhBgmKWKNBYuHVmOs_jM/view?usp=sharing) and save them to optmap/.
 
 ## Overview
 OptMap contains two nodes: the primary optmap node is a LiDAR mapping node which can be used to generate customized maps in real time, and the second generates point cloud descriptors which are used by the optmap node to select output maps. Both are launched from the same launch file `optmap_launch.py`.
