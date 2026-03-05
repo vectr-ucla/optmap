@@ -9,6 +9,7 @@ from rclpy.node import Node
 from sensor_msgs.msg import PointCloud2
 from sensor_msgs_py import point_cloud2
 from custom_interfaces.msg import Descriptor
+from custom_interfaces.msg import OptmapPointcloud
 
 from optmap.model.projection import RangeProjection
 from optmap.model.overlap_transformer import OverlapTransformer32
@@ -17,8 +18,6 @@ from ament_index_python.packages import get_package_share_directory
 
 class PointCloudDescriptor(Node):
     def __init__(self, weights):
-
-        self.seq = 0
 
         # init and load model
         self.weights = weights
@@ -33,7 +32,7 @@ class PointCloudDescriptor(Node):
         super().__init__('pc_descriptor_node')
         self.logger = self.get_logger()
         
-        self.pc_sub = self.create_subscription(PointCloud2, 'pointcloud', self.callback, 1)
+        self.pc_sub = self.create_subscription(OptmapPointcloud, 'pointcloud', self.callback, 1)
         self.descriptor_pub = self.create_publisher(Descriptor, 'descriptor', 1000)
 
         # load range image projector
@@ -49,7 +48,7 @@ class PointCloudDescriptor(Node):
     def callback(self, msg):
         # read pointcloud from ros msg
         point_cloud = point_cloud2.read_points(
-            msg,
+            msg.cloud,
             skip_nans=True,
             field_names=["x", "y", "z"],
             reshape_organized_cloud=True
@@ -70,13 +69,11 @@ class PointCloudDescriptor(Node):
         data = descriptor.cpu().detach().numpy().squeeze().tolist()
         descriptor_msg = Descriptor()
         descriptor_msg.header = msg.header
-        descriptor_msg.id = self.seq
+        descriptor_msg.id = msg.id
         descriptor_msg.data = data
 
         # publish descriptor
         self.descriptor_pub.publish(descriptor_msg)
-
-        self.seq = self.seq + 1
 
 def main(args=None):
 

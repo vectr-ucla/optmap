@@ -28,6 +28,12 @@ class OptMapNode: public rclcpp::Node {
         void set_save_scans(bool val)               { save_scans = val; }
         void set_voxelization(float val)            { voxelize = val; }
 
+        // Returns an array of pointclouds representing scans
+        std::vector<sensor_msgs::msg::PointCloud2> get_scans();
+
+        // Returns array of poses
+        geometry_msgs::msg::PoseArray get_poses();
+
     private:
         void clear_temp_pc_storage();
 

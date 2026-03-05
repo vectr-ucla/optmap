@@ -48,6 +48,40 @@ void service_full(OptMapNode* node, const std::shared_ptr<custom_interfaces::srv
     }
 }
 
+void service_hull(OptMapNode* node, const std::shared_ptr<custom_interfaces::srv::OptmapHull::Request> req, std::shared_ptr<custom_interfaces::srv::OptmapHull::Response> res) {
+    std::cout << "\n";
+    RCLCPP_INFO(rclcpp::get_logger("rclcpp"),"Starting OptMap for Change Detection. \nTotal number of available features: %d \nParameters:\n - num_scans=%d\n\n",
+            node->get_num_features(), req->num_scans);
+    auto total_start_time = std::chrono::steady_clock::now();
+
+    // Call optmap with position constraints defnied by convex hull of points in req
+    std::vector<float> x, y, z, r;
+    x.insert(x.end(), req->x.begin(), req->x.end());
+    y.insert(y.end(), req->y.begin(), req->y.end());
+    z.insert(z.end(), req->z.begin(), req->z.end());
+    r.insert(r.end(), req->r.begin(), req->r.end());
+    rclcpp::Time t1r = req->t1;
+    rclcpp::Time t2r = req->t2;
+
+    node->set_save_features(false);
+    node->set_publish_poses(false);
+    node->set_save_poses(false);
+    node->set_publish_map(false);
+    node->set_save_map(false);
+    node->set_publish_scans(false);
+    node->set_save_scans(false);
+
+    node->optimize_streaming(req->num_scans, &x, &y, &z, &r, &t1r, &t2r);
+
+    auto total_end_time = std::chrono::steady_clock::now();
+    std::cout << "OptMap Total Time: " << std::chrono::duration<double, std::milli>(total_end_time - total_start_time).count() << " ms" << std::endl;
+
+    res->submap = node->get_scans();
+    res->poses = node->get_poses();
+    res->success = true;
+    RCLCPP_INFO(rclcpp::get_logger("rclcpp"), "true.");
+}
+
 void service_position(OptMapNode* node, const std::shared_ptr<custom_interfaces::srv::OptmapPosition::Request> req, std::shared_ptr<custom_interfaces::srv::OptmapPosition::Response> res) {
     std::cout << "\n";
     RCLCPP_INFO(rclcpp::get_logger("rclcpp"),"Starting map optimization. \nTotal number of available features: %d \nParameters:\n - num_scans=%d\n - save_folder=%s\n - save_features=%d\n - publish_poses=%d\n - save_poses=%d\n - publish_map=%d\n - save_map=%d\n - publish_scans=%d\n - save_scans=%d\n\n",

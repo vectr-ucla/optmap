@@ -313,35 +313,21 @@ void OptMapNode::optimize_streaming(int num_scans, std::vector<float>* x, std::v
     std::lock_guard<std::mutex> distances_lock(featureList.distances_mutex);
 
     std::vector<std::pair<int, float>> features = featureList.get_features_basic();
+    this->result_indices.clear();
 
-    int num_points;
-    if (r == NULL) {
-        num_points = 0;
+    // Apply position constraints
+    if (r != NULL && x->size() > 0 && x->size() > r->size()) {
+        // 2d convex hull constraint
+        this->filter_pose_hull(features, *x, *y, *z, *r);
     }
-    else {
-        num_points = r->size();
-    }
-    std::vector<Eigen::Vector3f> centers;
-    for (int i=0; i<num_points; i++) {
-        Eigen::Vector3f center(x->at(i), y->at(i), z->at(i));
-        centers.push_back(center);
+    else if (r != NULL) {
+        // point-ball constraints
+        this->filter_pose_balls(features, *x, *y, *z, *r);
     }
 
-    if (num_points != 0) {
-        for (int i = 0; i < features.size(); i++) {
-            Feature& feature = featureList.at(features[i].first);
-            bool constr_met = false;
-            for (int j = 0; j < num_points; j++) {
-                if (t1.seconds() <= feature.get_timestamp().seconds() && feature.get_timestamp().seconds() <= t2.seconds() && (centers[j] - feature.get_pose().first).norm() <= r->at(j)) {
-                    constr_met = true;
-                }
-                if (constr_met) { break; }
-            }
-            if (!constr_met) {
-                features.erase(features.begin() + i);
-                i--;
-            }
-        }
+    // Apply time constraints
+    if (t1 != NULL) {
+        this->filter_time(features, *t1, *t2);
     }
 
     if (features.empty()) {
@@ -407,6 +393,150 @@ void OptMapNode::optimize_streaming(int num_scans, std::vector<float>* x, std::v
     }
 
     std::cout << std::endl;
+}
+
+
+float cross2D(const Eigen::Vector2f& a, const Eigen::Vector2f& b)
+{
+    return a.x() * b.y() - a.y() * b.x();
+}
+
+float signedArea(const std::vector<Eigen::Vector2f>& hull)
+{
+    int n = hull.size();
+
+    float a2 = 0.0f;
+    for (int i = 0; i < n; ++i) {
+        const Eigen::Vector2f& p = hull[i];
+        const Eigen::Vector2f& q = hull[(i + 1) % n];
+        a2 += cross2D(p, q);
+    }
+    return a2;
+}
+
+bool pointInInflatedHull(
+    const std::vector<Eigen::Vector2f>& hull,
+    const Eigen::Vector2f& p,
+    float inflation)
+{
+    float eps = 0.00001;
+
+    // Determine orientation (CCW = inside is left of each edge)
+    float a2 = signedArea(hull);
+    if (std::abs(a2) <= eps) {
+        // Nearly collinear polygon. treat as not a valid area
+        return false;
+    }
+    float orient = (a2 > 0.0f) ? +1.0f : -1.0f;
+
+    // For each edge, compute signed distance to its supporting line.
+    // Include points that are within 'inflation' of the hull edge.
+    // Compute distance to the edge with cross product
+    for (int i = 0; i < hull.size(); i++) {
+        Eigen::Vector2f a = hull[i];
+        Eigen::Vector2f b = hull[(i + 1) % hull.size()];
+        Eigen::Vector2f e = b - a;
+
+        float elen = e.norm();
+        if (elen <= eps) {continue; }
+
+        float signed_dist = orient * cross2D(e, p - a) / elen;
+
+        if (signed_dist < -inflation) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+void OptMapNode::filter_pose_hull(
+    std::vector<std::pair<int, float>>& features, 
+    std::vector<float>& x, 
+    std::vector<float>& y, 
+    std::vector<float>& z, 
+    std::vector<float>& r) 
+{
+
+    // Convex hulls are given as set of vertices for a 2d shape
+    // r is the inflation size
+    std::vector<Eigen::Vector2f> hull_vertices;
+    for (int i=0; i<x.size(); i++) {
+        hull_vertices.push_back(Eigen::Vector2f(x[i], y[i]));
+    }
+
+    // Make sure the hull is open (first / last points don't repeat)
+    if ((hull_vertices[0] - hull_vertices.back()).norm() < 0.0001) {
+        hull_vertices.pop_back();
+    }
+
+    if (hull_vertices.size() < 3) {
+        RCLCPP_ERROR(this->get_logger(), "Hull position constraint contained less than 3 unique vertices.");
+        return;
+    }
+
+    float inflation = 0;
+    if (r.size() == 1 && r[0] > 0) {
+        inflation = r[0];
+    }
+    else {
+        RCLCPP_WARN(this->get_logger(), "Hull inflation radius input error.");
+    }
+
+    for (int i = 0; i < features.size(); i++) {
+        Feature& feature = featureList.at(features[i].first);
+        Eigen::Vector3f pose = feature.get_pose().first;
+        Eigen::Vector2f pose2d(pose.x(), pose.y());
+
+        if (!pointInInflatedHull(hull_vertices, pose2d, inflation)) {
+            features.erase(features.begin() + i);
+            i--;
+        }
+    }
+}
+
+void OptMapNode::filter_pose_balls(
+    std::vector<std::pair<int, float>>& features, 
+    std::vector<float>& x, 
+    std::vector<float>& y, 
+    std::vector<float>& z, 
+    std::vector<float>& r) 
+{
+    
+    int num_points = r.size();
+    std::vector<Eigen::Vector3f> centers;
+    for (int i=0; i<num_points; i++) {
+        Eigen::Vector3f center(x[i], y[i], z[i]);
+        centers.push_back(center);
+    }
+
+    if (num_points != 0) {
+        for (int i = 0; i < features.size(); i++) {
+            Feature& feature = featureList.at(features[i].first);
+            bool constr_met = false;
+            for (int j = 0; j < num_points; j++) {
+                if ((centers[j] - feature.get_pose().first).norm() <= r[j]) {
+                    constr_met = true;
+                }
+                if (constr_met) { break; }
+            }
+            if (!constr_met) {
+                features.erase(features.begin() + i);
+                i--;
+            }
+        }
+    }
+}
+
+void OptMapNode::filter_time(std::vector<std::pair<int, float>>& features, rclcpp::Time t1, rclcpp::Time t2) {
+    
+    for (int i = 0; i < features.size(); i++) {
+        Feature& feature = featureList.at(features[i].first);
+        if (!(t1.seconds() <= feature.get_timestamp().seconds() && feature.get_timestamp().seconds() <= t2.seconds())) {
+            features.erase(features.begin() + i);
+            i--;
+        }
+    }
 }
 
 void OptMapNode::optimize_streaming_helper(std::vector<std::pair<int,float>> features, int num_scans) {
@@ -840,6 +970,8 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr OptMapNode::build_pointcloud_map(const std::
         crop.setInputCloud(pc);
         crop.filter(*pc);
 
+        pcl::transformPointCloud(*pc, *pc, feature.get_pose().first, feature.get_pose().second); // TODO: Apply del pose as well if exists
+
         // if there's a pose update
         if (feature.get_del_pose().has_value()) {
             del_pose = feature.get_del_pose().value();
@@ -952,6 +1084,92 @@ geometry_msgs::msg::PoseArray::Ptr OptMapNode::build_pose_array(const std::vecto
     return pa;
 }
 
+std::vector<sensor_msgs::msg::PointCloud2> OptMapNode::get_scans() {
+    std::vector<sensor_msgs::msg::PointCloud2> scans;
+
+    // TODO: Parallelize map loading when done with the optimization
+    std::optional<Feature::Pose> del_pose;
+    for (int index : result_indices) {
+        Feature& feature = featureList.at(index);
+
+        pcl::PointCloud<pcl::PointXYZ>::Ptr pc (new pcl::PointCloud<pcl::PointXYZ>);
+        std::string cloud_path = feature.get_cloud_path();
+        pcl::io::loadPCDFile<pcl::PointXYZ> (cloud_path, *pc);
+
+        if (this->voxelize >= 0.05) {
+            pcl::VoxelGrid<pcl::PointXYZ> vg;
+            vg.setLeafSize(this->voxelize, this->voxelize, this->voxelize);
+            vg.setInputCloud(pc);
+            vg.filter(*pc);
+        }
+
+        // filter out points outside bounding box
+        pcl::CropBox<pcl::PointXYZ> crop;
+        crop.setMin(Eigen::Vector4f(this->x_min, this->y_min, this->z_min, 1.0));
+        crop.setMax(Eigen::Vector4f(this->x_max, this->y_max, this->z_max, 1.0));
+        crop.setInputCloud(pc);
+        crop.filter(*pc);
+
+        pcl::transformPointCloud(*pc, *pc, feature.get_pose().first, feature.get_pose().second); // TODO: Apply del pose as well if exists
+
+        // if there's a pose update
+        if (feature.get_del_pose().has_value()) {
+            del_pose = feature.get_del_pose().value();
+        }
+
+        if (del_pose.has_value()) {
+            // TODO: To make orientation correct, transform point cloud to origin, apply new orientation, then translate to new position 
+
+            Eigen::Matrix4f T = Eigen::Matrix4f::Identity();
+            T.block(0, 3, 3, 1) = del_pose.value().first;
+            T.block(0, 0, 3, 3) = del_pose.value().second.toRotationMatrix();
+
+            pcl::PointCloud<pcl::PointXYZ>::Ptr transformed_cloud (new pcl::PointCloud<pcl::PointXYZ>());
+            pcl::transformPointCloud(*pc, *transformed_cloud, T);
+            pc = transformed_cloud;
+        }
+
+        sensor_msgs::msg::PointCloud2 cloud;
+        pcl::toROSMsg(*pc, cloud);
+        scans.push_back(cloud);
+    }
+
+    return scans;
+}
+
+geometry_msgs::msg::PoseArray OptMapNode::get_poses() {
+    geometry_msgs::msg::PoseArray pa;
+    pa.header.frame_id = this->map_frame;
+    
+    {
+        for (int feature_index : result_indices) {
+            Feature& feature = featureList.at(feature_index);
+            const Feature::Pose& pose = feature.get_pose();
+
+            geometry_msgs::msg::Pose p;
+            p.position.x = pose.first.x();
+            p.position.y = pose.first.y();
+            p.position.z = pose.first.z();
+            p.orientation.w = pose.second.w();
+            p.orientation.x = pose.second.x();
+            p.orientation.y = pose.second.y();
+            p.orientation.z = pose.second.z();
+            
+            std::optional<Feature::Pose> del_pose = feature.get_del_pose();
+            if (del_pose.has_value()) {
+                // TODO: Apply del orientation
+                p.position.x += del_pose.value().first.x();
+                p.position.y += del_pose.value().first.y();
+                p.position.z += del_pose.value().first.z();
+            }
+
+            pa.poses.push_back(p);
+        }
+    }
+
+    return pa;
+}
+
 // TODO: transform according to Feature::del_pose
 void OptMapNode::export_scans(const std::vector<int>& feature_indices) {
     if (this->save_scans) {
@@ -959,11 +1177,15 @@ void OptMapNode::export_scans(const std::vector<int>& feature_indices) {
     }
 
     for (int index : feature_indices) {
-        if (this->publish_scans) {
-            pcl::PointCloud<pcl::PointXYZ>::Ptr pc (new pcl::PointCloud<pcl::PointXYZ>);
-            std::string cloud_path = featureList.at(index).get_cloud_path();
-            pcl::io::loadPCDFile<pcl::PointXYZ> (cloud_path, *pc);
+        Feature& feature = featureList.at(index);
 
+        pcl::PointCloud<pcl::PointXYZ>::Ptr pc (new pcl::PointCloud<pcl::PointXYZ>);
+        std::string cloud_path = feature.get_cloud_path();
+        pcl::io::loadPCDFile<pcl::PointXYZ> (cloud_path, *pc);
+
+        pcl::transformPointCloud(*pc, *pc, feature.get_pose().first, feature.get_pose().second); // TODO: Apply del pose as well if exists
+
+        if (this->publish_scans) {
             sensor_msgs::msg::PointCloud2 cloud_ros;
             pcl::toROSMsg(*pc, cloud_ros);
             cloud_ros.header.frame_id = this->map_frame;
@@ -972,7 +1194,7 @@ void OptMapNode::export_scans(const std::vector<int>& feature_indices) {
 
         if (this->save_scans) {
             std::string new_cloud_path = save_folder + "/map_scans/" + std::to_string(index) + ".pcd";
-            std::filesystem::copy_file(featureList.at(index).get_cloud_path(), new_cloud_path);
+            pcl::io::savePCDFileBinary(new_cloud_path, *pc);
         }
     }
 
