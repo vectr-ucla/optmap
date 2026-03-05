@@ -773,6 +773,8 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr OptMapNode::build_pointcloud_map(const std::
         crop.setInputCloud(pc);
         crop.filter(*pc);
 
+        pcl::transformPointCloud(*pc, *pc, feature.get_pose().first, feature.get_pose().second); // TODO: Apply del_pose if exists
+
         // if there's a pose update
         if (feature.get_del_pose().has_value()) {
             del_pose = feature.get_del_pose().value();
@@ -891,11 +893,15 @@ void OptMapNode::export_scans(const std::vector<int>& feature_indices) {
     }
 
     for (int index : feature_indices) {
-        if (this->publish_scans) {
-            pcl::PointCloud<pcl::PointXYZ>::Ptr pc (new pcl::PointCloud<pcl::PointXYZ>);
-            std::string cloud_path = featureList.at(index).get_cloud_path();
-            pcl::io::loadPCDFile<pcl::PointXYZ> (cloud_path, *pc);
+        Feature& feature = featureList.at(index);
 
+        pcl::PointCloud<pcl::PointXYZ>::Ptr pc (new pcl::PointCloud<pcl::PointXYZ>);
+        std::string cloud_path = feature.get_cloud_path();
+        pcl::io::loadPCDFile<pcl::PointXYZ> (cloud_path, *pc);
+
+        pcl::transformPointCloud(*pc, *pc, feature.get_pose().first, feature.get_pose().second); // TODO: Apply del pose as well if exists
+
+        if (this->publish_scans) {
             sensor_msgs::PointCloud2 cloud_ros;
             pcl::toROSMsg(*pc, cloud_ros);
             cloud_ros.header.frame_id = this->map_frame;
@@ -904,7 +910,7 @@ void OptMapNode::export_scans(const std::vector<int>& feature_indices) {
 
         if (this->save_scans) {
             std::string new_cloud_path = save_folder + "/map_scans/" + std::to_string(index) + ".pcd";
-            std::filesystem::copy_file(featureList.at(index).get_cloud_path(), new_cloud_path);
+            pcl::io::savePCDFileBinary(new_cloud_path, *pc);
         }
     }
 
