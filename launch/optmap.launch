@@ -14,8 +14,8 @@
 
   <arg name="optmap_namespace" default="optmap"/>
 
-  <arg name="pointcloud_topic" default="dliom/odom_node/pointcloud"/>
-  <arg name="pose_topic" default="dliom/odom_node/pose_optmap"/>
+  <arg name="pointcloud_topic" default="dlio/odom_node/optmap_pointcloud"/>
+  <arg name="pose_topic" default="dlio/odom_node/optmap_pose"/>
   <arg name="pose_update_topic" default="/"/>
 
   <!-- Point Cloud Descriptor Node -->
