@@ -105,13 +105,13 @@ void OptMapNode::callbackDescriptor(optmap::DescriptorConstPtr msg) {
     }
 }
 
-void OptMapNode::callbackPointCloud(sensor_msgs::PointCloud2::ConstPtr pc) {
-    int scan_index = pc->header.seq;
+void OptMapNode::callbackPointCloud(optmap::OptmapPointcloudConstPtr pc) {
+    int scan_index = msg->pc.header.seq;
     this->most_recent_cloud = scan_index;
-    this->recent_time = pc->header.stamp.toSec();
+    this->recent_time = msg->pc.header.stamp.toSec();
 
     pcl::PointCloud<pcl::PointXYZ>::Ptr cloud (boost::make_shared<pcl::PointCloud<pcl::PointXYZ>>());
-    pcl::fromROSMsg(*pc, *cloud);
+    pcl::fromROSMsg(msg->pc, *cloud);
 
     // split into 100 subfolders for faster indexing
     std::string folder_path = this->pc_foldername + "/" + std::to_string(scan_index % 100);
@@ -132,7 +132,7 @@ void OptMapNode::callbackPointCloud(sensor_msgs::PointCloud2::ConstPtr pc) {
         return;
     }
 
-    ros::Time timestamp = pc->header.stamp;
+    ros::Time timestamp = msg->pc.header.stamp;
     featureList.append_feature_data(scan_index, [timestamp, cloud_path](Feature& feature) {
         feature.set_timestamp(timestamp);
         feature.set_cloud_path(cloud_path);

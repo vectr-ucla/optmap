@@ -6,9 +6,8 @@ import numpy as np
 
 import rospy
 import sensor_msgs.point_cloud2 as pc2
-from sensor_msgs.msg import PointCloud2
-from std_msgs.msg import Float32MultiArray
 from optmap.msg import Descriptor
+from optmap.msg import OptmapPointcloud
 
 file_dir = os.path.dirname(__file__)
 sys.path.append(file_dir)
@@ -37,13 +36,13 @@ class PointCloudDescriptor:
         self.projector = RangeProjection(fov_up=fov_up, fov_down=fov_down)
 
         # subscribe pointcloud
-        rospy.Subscriber('~pointcloud', PointCloud2, self.callback, queue_size=1, tcp_nodelay=True)
+        rospy.Subscriber('~pointcloud', OptmapPointcloud, self.callback, queue_size=1, tcp_nodelay=True)
         self.descriptor_pub = rospy.Publisher('~descriptor', Descriptor, latch=True, queue_size=1000)
         rospy.loginfo('NN NODE INITIALIZED.')
 
     def callback(self, msg):
         # read pointcloud from ros msg
-        pointcloud = pc2.read_points(msg, field_names=('x', 'y', 'z'), skip_nans=True)
+        pointcloud = pc2.read_points(msg.pc, field_names=('x', 'y', 'z'), skip_nans=True)
         pointcloud = np.array(list(pointcloud))
 
         # compute descriptor
@@ -54,8 +53,8 @@ class PointCloudDescriptor:
         # publish data
         data = descriptor.cpu().detach().numpy().squeeze().tolist()
         descriptor_msg = Descriptor()
-        descriptor_msg.header = msg.header
-        descriptor_msg.id = msg.header.seq
+        descriptor_msg.header = msg.pc.header
+        descriptor_msg.id = msg.pc.header.seq
         descriptor_msg.data = data
 
         # publish descriptor

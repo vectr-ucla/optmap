@@ -10,6 +10,7 @@
 #include <optmap/optmap_set_voxelization.h>
 
 #include <optmap/Descriptor.h>
+#include <optmap/OptmapPointcloud.h>
 #include <optmap/OptmapPose.h>
 #include <optmap/OptmapPoseArray.h>
 
@@ -44,7 +45,7 @@ class OptMapNode {
 
         void callbackPose(optmap::OptmapPoseConstPtr msg);
         void callbackDescriptor(optmap::DescriptorConstPtr msg);
-        void callbackPointCloud(sensor_msgs::PointCloud2::ConstPtr pc);
+        void callbackPointCloud(optmap::OptmapPointcloudConstPtr pc);
         void callbackPoseUpdates(optmap::OptmapPoseArrayPtr msg);
 
         // Aggregates the pointclouds from the provided feature indices. Can optionally save or publish the full map, and / or save each scan if publish/save_map and save_scans are set to true

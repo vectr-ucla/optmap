@@ -52,6 +52,7 @@ add_message_files(
   DIRECTORY msg
   FILES
   Descriptor.msg
+  OptmapPointcloud.msg
   OptmapPose.msg
   OptmapPoseArray.msg
 )

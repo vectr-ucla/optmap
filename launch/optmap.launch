@@ -42,6 +42,7 @@
     <remap from="~descriptor"         to="pc_descriptor_node/descriptor"/>
     <remap from="~pointcloud"         to="$(arg pointcloud_topic)"/>
     <remap from="~pose"               to="$(arg pose_topic)"/>
+    <remap from="~pose_updates"       to="$(arg pose_update_topic)"/>
 
     <!-- Publications -->
     <remap from="~map"                to="optmap/map"/>  
